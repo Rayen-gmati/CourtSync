@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BouncingBall } from '@/components/ui/BouncingBall'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { StarRating } from '@/components/ui/StarRating'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { EmptyState } from '@/components/ui/EmptyState'
 
@@ -18,9 +20,20 @@ type Player = {
   niveau: string | null
 }
 
+type WeeklyRatingRow = {
+  id: string
+  playerId: string
+  playerName: string
+  parentName: string
+  weekStart: string
+  rating: number
+}
+
 export default function CoachPlayersPage() {
   const [userName, setUserName] = useState('')
   const [players, setPlayers] = useState<Player[]>([])
+  const [ratings, setRatings] = useState<WeeklyRatingRow[]>([])
+  const [ratingsPlayerFilter, setRatingsPlayerFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -62,6 +75,37 @@ export default function CoachPlayersPage() {
 
         if (!playersError && playersData && mounted) {
           setPlayers(playersData)
+        }
+
+        // Notations hebdomadaires laissées par les parents (coach = accès complet via RLS
+        // wr_coach_all). Noms joueur/parent résolus en JS — pas d'embedding PostgREST,
+        // même approche que le dashboard parent pour les objectifs/tournois.
+        const { data: ratingsData, error: ratingsError } = await supabase
+          .from('weekly_ratings')
+          .select('id, player_id, parent_id, week_start_date, rating')
+          .order('week_start_date', { ascending: false })
+
+        if (ratingsError) {
+          console.error('Error loading weekly ratings:', ratingsError)
+        } else if (ratingsData && ratingsData.length > 0) {
+          const parentIds = Array.from(
+            new Set(ratingsData.map((row) => row.parent_id).filter(Boolean))
+          ) as string[]
+          let parentMap: Record<string, string> = {}
+          if (parentIds.length > 0) {
+            const { data: parentsData } = await supabase.from('users').select('id, nom').in('id', parentIds)
+            parentMap = Object.fromEntries((parentsData || []).map((user) => [user.id, user.nom]))
+          }
+          const playerMap = Object.fromEntries((playersData || []).map((player) => [player.id, player.nom]))
+          const rows: WeeklyRatingRow[] = ratingsData.map((row) => ({
+            id: row.id,
+            playerId: row.player_id,
+            playerName: playerMap[row.player_id] || 'Joueur inconnu',
+            parentName: row.parent_id ? parentMap[row.parent_id] || 'Parent inconnu' : '—',
+            weekStart: row.week_start_date,
+            rating: row.rating,
+          }))
+          if (mounted) setRatings(rows)
         }
       } catch (fetchError) {
         console.error('Error loading players page:', fetchError)
@@ -124,6 +168,11 @@ export default function CoachPlayersPage() {
       setSubmitting(false)
     }
   }
+
+  const filteredRatings = useMemo(
+    () => (ratingsPlayerFilter ? ratings.filter((row) => row.playerId === ratingsPlayerFilter) : ratings),
+    [ratings, ratingsPlayerFilter]
+  )
 
   if (loading) {
     return (
@@ -231,6 +280,56 @@ export default function CoachPlayersPage() {
                       <td className="px-4 py-4 font-medium text-[var(--text-main)]">{player.nom}</td>
                       <td className="px-4 py-4 text-[var(--text-muted)] font-sora font-semibold tabular-nums">{player.date_naissance ?? '—'}</td>
                       <td className="px-4 py-4 text-[var(--text-muted)]">{player.niveau ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Notations hebdomadaires des parents</h2>
+              <p className="text-[var(--text-muted)] mt-1">Appréciation de la semaine d’entraînement laissée par les parents pour chaque joueur.</p>
+            </div>
+            {players.length > 0 && (
+              <Select
+                value={ratingsPlayerFilter}
+                onChange={(e) => setRatingsPlayerFilter(e.target.value)}
+                className="px-4 py-2 rounded-lg focus:ring-2 focus:ring-[var(--accent-secondary)]"
+              >
+                <option value="">Tous les joueurs</option>
+                {players.map((player) => (
+                  <option key={player.id} value={player.id}>
+                    {player.nom}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </div>
+
+          {filteredRatings.length === 0 ? (
+            <EmptyState message="Aucune notation hebdomadaire pour l’instant." />
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)]">
+              <table className="min-w-full divide-y divide-[var(--border-subtle)] bg-[var(--bg-card)]">
+                <thead className="bg-[var(--bg-dim)]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--text-muted)]">Joueur</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--text-muted)]">Semaine du</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--text-muted)]">Note</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--text-muted)]">Parent</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {filteredRatings.map((row) => (
+                    <tr key={row.id} className="hover:bg-[var(--bg-dim)] transition">
+                      <td className="px-4 py-4 font-medium text-[var(--text-main)]">{row.playerName}</td>
+                      <td className="px-4 py-4 text-[var(--text-muted)] font-sora font-semibold tabular-nums">{row.weekStart}</td>
+                      <td className="px-4 py-4"><StarRating rating={row.rating} /></td>
+                      <td className="px-4 py-4 text-[var(--text-muted)]">{row.parentName}</td>
                     </tr>
                   ))}
                 </tbody>

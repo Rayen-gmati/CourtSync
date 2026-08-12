@@ -374,9 +374,9 @@ export default function CoachSessionsPage() {
     router.push('/login')
   }
 
-  const openNewSessionForm = () => {
+  const openNewSessionForm = (presetDate?: string) => {
     setEditingSessionId(null)
-    setForm(createEmptyForm())
+    setForm({ ...createEmptyForm(), date: presetDate || '' })
     setGoals([])
     setError('')
     setSuccess('')
@@ -597,7 +597,7 @@ export default function CoachSessionsPage() {
 
               <Button variant="secondary" onClick={() => setReferenceDate(addDays(referenceDate, viewMode === 'week' ? -7 : -30))}>Précédent</Button>
 
-              <Button variant="accent" onClick={openNewSessionForm}>Ajouter une séance</Button>
+              <Button variant="accent" onClick={() => openNewSessionForm()}>Ajouter une séance</Button>
             </div>
           </div>
 
@@ -630,7 +630,12 @@ export default function CoachSessionsPage() {
                       const isToday = key === formatDateKey(new Date())
 
                       return (
-                        <div key={key} className={`min-h-40 p-2 ${isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)]'} ${isToday ? 'ring-2 ring-[var(--accent-secondary)] ring-inset' : ''}`}>
+                        <div
+                          key={key}
+                          onClick={() => openNewSessionForm(key)}
+                          title={`Ajouter une séance le ${key}`}
+                          className={`min-h-40 p-2 cursor-pointer ${isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)]'} ${isToday ? 'ring-2 ring-[var(--accent-secondary)] ring-inset' : ''}`}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className={`text-sm font-semibold ${isCurrentMonth ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)] opacity-40'}`}>
                               {day.getDate()}
@@ -645,7 +650,10 @@ export default function CoachSessionsPage() {
                       {daySessions.slice(0, viewMode === 'month' ? 3 : 5).map((session) => (
                         <button
                           key={session.id}
-                          onClick={() => openSessionDetails(session)}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openSessionDetails(session)
+                          }}
                           className={`w-full text-left rounded-input px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] hover:opacity-95 transition ${sessionTypeColors[session.type || 'entrainement'] || 'bg-[var(--bg-card)] text-[var(--accent-primary)]'}`}
                         >
                           <div className="flex items-center justify-between gap-1">

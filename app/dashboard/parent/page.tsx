@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/Badge'
@@ -14,7 +15,9 @@ import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground'
 import { TennisServiceSilhouette } from '@/components/ui/TennisServiceSilhouette'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
+import { EFFECTIVE_STATUS_LABELS, getEffectiveStatus } from '@/lib/session-status'
 import { WeatherBadge } from '@/components/ui/WeatherBadge'
+import { PeriodBands, getWeekBandSegments, bandRowCount, bandSpacerHeight } from '@/components/ui/PeriodBands'
 import type { WeatherByDate } from '@/lib/weather'
 import { useNow } from '@/lib/use-now'
 
@@ -33,6 +36,8 @@ type SessionItem = {
   type: string | null
   statut: string | null
   notes_coach: string | null
+  prix: number | null
+  coachNames: string[]
   goals: Array<{ id: string; nom: string }>
 }
 
@@ -53,6 +58,7 @@ type PeriodItem = {
   date_fin: string
   notes: string | null
   tournament_name: string | null
+  color: string | null
 }
 
 type RatingValue = {
@@ -75,6 +81,12 @@ function startOfWeek(date: Date) {
 function addDays(date: Date, amount: number) {
   const next = new Date(date)
   next.setDate(next.getDate() + amount)
+  return next
+}
+
+function addMonths(date: Date, amount: number) {
+  const next = new Date(date)
+  next.setMonth(next.getMonth() + amount)
   return next
 }
 
@@ -103,8 +115,25 @@ function getSessionTypeLabel(value: string | null | undefined) {
   }
 }
 
+// Message utilisateur en fonction de la nature réelle de l'erreur Supabase :
+// on distingue réseau / droits (RLS) / serveur pour faciliter le debug.
+function describeRatingError(err: { code?: string; message?: string; name?: string } | null | undefined) {
+  const message = String(err?.message || '')
+  // Erreur réseau : la requête n'a pas atteint le serveur (fetch échoué).
+  if (err?.name === 'TypeError' || /failed to fetch|networkerror|network request failed/i.test(message)) {
+    return 'Problème de connexion réseau. Vérifiez votre connexion et réessayez.'
+  }
+  // Violation d'une policy RLS Supabase : droits insuffisants.
+  if (err?.code === '42501' || /row-level security/i.test(message)) {
+    return 'Vous n’avez pas les droits pour noter ce joueur.'
+  }
+  // Défaut : erreur serveur / inconnue.
+  return 'Impossible d’enregistrer la note hebdomadaire. Réessayez plus tard.'
+}
+
 export default function ParentDashboard() {
   const [userName, setUserName] = useState('')
+  const [parentId, setParentId] = useState('')
   const [loading, setLoading] = useState(true)
   const [linkedPlayers, setLinkedPlayers] = useState<LinkedPlayer[]>([])
   const [selectedPlayerId, setSelectedPlayerId] = useState('')
@@ -112,11 +141,13 @@ export default function ParentDashboard() {
   const [matches, setMatches] = useState<MatchItem[]>([])
   const [periods, setPeriods] = useState<PeriodItem[]>([])
   const [weather, setWeather] = useState<WeatherByDate>({})
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => startOfWeek(new Date()))
   const [weeklyRating, setWeeklyRating] = useState<RatingValue>({ id: null, rating: null })
   const [ratingSaving, setRatingSaving] = useState(false)
   const [ratingError, setRatingError] = useState('')
   const [error, setError] = useState('')
+  const [detailSession, setDetailSession] = useState<SessionItem | null>(null)
   const router = useRouter()
   // Statuts recalculés en direct : "Prévue" → "En cours" → "Faite" sans reload.
   const now = useNow(30000)
@@ -127,6 +158,30 @@ export default function ParentDashboard() {
   )
 
   const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart])
+
+  // Bandes de périodes (vue semaine) : une bande continue par semaine.
+  const weekBandSegments = useMemo(() => getWeekBandSegments(weekDays, periods), [weekDays, periods])
+  const weekBandRows = bandRowCount(weekBandSegments)
+
+  // Vue mois : 6 lignes de semaines, sans scroll.
+  const monthWeeks = useMemo(() => {
+    if (viewMode !== 'month') return [] as Date[][]
+    const firstOfMonth = new Date(currentWeekStart.getFullYear(), currentWeekStart.getMonth(), 1)
+    const start = startOfWeek(firstOfMonth)
+    const days = Array.from({ length: 42 }, (_, index) => addDays(start, index))
+    const rows: Date[][] = []
+    for (let i = 0; i < days.length; i += 7) rows.push(days.slice(i, i + 7))
+    return rows
+  }, [currentWeekStart, viewMode])
+
+  const calendarTitle = useMemo(() => {
+    if (viewMode === 'month') {
+      const label = currentWeekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+      return label.charAt(0).toUpperCase() + label.slice(1)
+    }
+    const end = weekDays[6]
+    return `${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  }, [viewMode, currentWeekStart, weekDays])
 
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, SessionItem[]>()
@@ -168,6 +223,7 @@ export default function ParentDashboard() {
 
         if (!active) return
         setUserName(userData.nom)
+        setParentId(userData.id)
 
         const { data: linksData, error: linksError } = await supabase
           .from('player_parents')
@@ -251,7 +307,7 @@ export default function ParentDashboard() {
   }, [])
 
   useEffect(() => {
-    if (!selectedPlayerId) return
+    if (!selectedPlayerId || !parentId) return
 
     let active = true
 
@@ -260,29 +316,40 @@ export default function ParentDashboard() {
         setError('')
         setRatingError('')
 
-        const [sessionsResult, matchesResult, periodsResult, sessionGoalsResult, goalsResult, ratingResult] = await Promise.all([
+        const [sessionsResult, matchesResult, periodsResult, sessionGoalsResult, goalsResult, ratingResult, sessionCoachesResult] = await Promise.all([
           supabase
             .from('sessions')
-            .select('id, player_id, date, heure_debut, heure_fin, localisation, type, statut, notes_coach')
+            .select('id, player_id, date, heure_debut, heure_fin, localisation, type, statut, notes_coach, prix')
             .eq('player_id', selectedPlayerId)
             .order('date', { ascending: false })
             .order('heure_debut', { ascending: true }),
           supabase.from('matches').select('id, date, adversaire, score, resultat').eq('player_id', selectedPlayerId).order('date', { ascending: false }),
-          supabase.from('periods').select('id, player_id, type, nom, date_debut, date_fin, notes, tournament_id').eq('player_id', selectedPlayerId).order('date_debut', { ascending: true }),
+          supabase.from('periods').select('id, player_id, type, nom, date_debut, date_fin, notes, tournament_id, color').eq('player_id', selectedPlayerId).order('date_debut', { ascending: true }),
           supabase.from('session_goals').select('session_id, goal_id'),
           supabase.from('goals').select('id, nom, player_id').eq('player_id', selectedPlayerId).order('nom'),
           supabase
             .from('weekly_ratings')
             .select('id, rating')
             .eq('player_id', selectedPlayerId)
-            .eq('week_start', formatDateKey(currentWeekStart))
+            .eq('week_start_date', formatDateKey(currentWeekStart))
+            .eq('parent_id', parentId)
             .maybeSingle(),
+          supabase.from('session_coaches').select('session_id, coach_id'),
         ])
 
         if (!active) return
 
         const sessionGoalsData = sessionGoalsResult.data || []
         const goalsData = goalsResult.data || []
+
+        // Noms des coachs par séance (sans les montants, réservés au coach).
+        const sessionCoachesData = sessionCoachesResult.data || []
+        const coachIds = Array.from(new Set(sessionCoachesData.map((row) => row.coach_id)))
+        let coachNameMap: Record<string, string> = {}
+        if (coachIds.length > 0) {
+          const { data: coachesData } = await supabase.from('users').select('id, nom').in('id', coachIds)
+          coachNameMap = Object.fromEntries((coachesData || []).map((coach) => [coach.id, coach.nom]))
+        }
 
         const enrichedSessions: SessionItem[] = (sessionsResult.data || []).map((session) => {
           const mappedGoals = sessionGoalsData
@@ -292,8 +359,13 @@ export default function ParentDashboard() {
               return { id: row.goal_id, nom: goal?.nom || 'Objectif inconnu' }
             })
 
+          const coachNames = sessionCoachesData
+            .filter((row) => row.session_id === session.id)
+            .map((row) => coachNameMap[row.coach_id] || 'Coach inconnu')
+
           return {
             ...session,
+            coachNames,
             goals: mappedGoals,
           }
         })
@@ -329,44 +401,48 @@ export default function ParentDashboard() {
     return () => {
       active = false
     }
-  }, [selectedPlayerId, currentWeekStart])
+  }, [selectedPlayerId, currentWeekStart, parentId])
 
   const handleSaveRating = async (value: number) => {
-    if (!selectedPlayerId) return
+    if (!selectedPlayerId || !parentId) return
 
+    // Mise à jour optimiste : l'étoile réagit tout de suite, on restaure en cas d'échec.
+    const previousRating = weeklyRating
+    setWeeklyRating((current) => ({ ...current, rating: value }))
     setRatingSaving(true)
     setRatingError('')
 
     try {
-      if (weeklyRating.id) {
-        const { error: updateError } = await supabase
-          .from('weekly_ratings')
-          .update({ rating: value })
-          .eq('id', weeklyRating.id)
+      // UPSERT atomique sur (player_id, week_start_date, parent_id) : crée la note ou
+      // met à jour celle de ce parent, sans doublon ni logique insert/update manuelle.
+      const { data, error: upsertError } = await supabase
+        .from('weekly_ratings')
+        .upsert(
+          {
+            player_id: selectedPlayerId,
+            parent_id: parentId,
+            week_start_date: formatDateKey(currentWeekStart),
+            rating: value,
+          },
+          { onConflict: 'player_id,week_start_date,parent_id' }
+        )
+        .select('id')
+        .single()
 
-        if (updateError) throw updateError
-      } else {
-        const { data, error: insertError } = await supabase
-          .from('weekly_ratings')
-          .insert([
-            {
-              player_id: selectedPlayerId,
-              parent_id: (await supabase.auth.getUser()).data.user?.id,
-              week_start: formatDateKey(currentWeekStart),
-              rating: value,
-            },
-          ])
-          .select('id')
-          .single()
+      if (upsertError || !data) throw upsertError || new Error('Unable to save rating')
 
-        if (insertError || !data) throw insertError || new Error('Unable to save rating')
-        setWeeklyRating({ id: data.id, rating: value })
-      }
-
-      setWeeklyRating((current) => ({ ...current, rating: value }))
+      setWeeklyRating({ id: data.id, rating: value })
     } catch (saveError) {
-      console.error('Error saving weekly rating:', saveError)
-      setRatingError('Impossible d’enregistrer la note hebdomadaire.')
+      // Log de l'erreur Supabase réelle (code/message/details/hint) pour le debug serveur.
+      const err = saveError as { code?: string; message?: string; details?: string; hint?: string; name?: string }
+      console.error('Error saving weekly rating:', {
+        code: err?.code,
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+      })
+      setWeeklyRating(previousRating) // revert de l'affichage optimiste
+      setRatingError(describeRatingError(err))
     } finally {
       setRatingSaving(false)
     }
@@ -436,45 +512,124 @@ export default function ParentDashboard() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Calendrier des séances – {selectedPlayer.nom}</h2>
-                  <p className="text-[var(--text-muted)] mt-1">Vue hebdomadaire simple avec les créneaux de votre enfant.</p>
+                  <p className="text-[var(--text-muted)] mt-1">
+                    {viewMode === 'week'
+                      ? 'Vue hebdomadaire simple avec les créneaux de votre enfant.'
+                      : 'Vue mensuelle : toutes les semaines du mois, avec les périodes d’entraînement.'}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button variant="secondary" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, -7))}>← Précédent</Button>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="inline-flex bg-[var(--bg-card)] rounded-input p-1 border border-[var(--border-subtle)]">
+                    <button
+                      onClick={() => setViewMode('week')}
+                      className={`px-4 py-2 rounded-md text-sm font-semibold transition ${viewMode === 'week' ? 'bg-[var(--accent-cta)] text-[var(--text-main)]' : 'text-[var(--text-main)] hover:bg-[var(--bg-dim)]'}`}
+                    >
+                      Semaine
+                    </button>
+                    <button
+                      onClick={() => setViewMode('month')}
+                      className={`px-4 py-2 rounded-md text-sm font-semibold transition ${viewMode === 'month' ? 'bg-[var(--accent-cta)] text-[var(--text-main)]' : 'text-[var(--text-main)] hover:bg-[var(--bg-dim)]'}`}
+                    >
+                      Mois
+                    </button>
+                  </div>
+                  <Button variant="secondary" onClick={() => setCurrentWeekStart(viewMode === 'week' ? addDays(currentWeekStart, -7) : addMonths(currentWeekStart, -1))}>← Précédent</Button>
                   <Button variant="secondary" onClick={() => setCurrentWeekStart(startOfWeek(new Date()))}>Aujourd’hui</Button>
-                  <Button variant="secondary" onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}>Suivant →</Button>
+                  <Button variant="secondary" onClick={() => setCurrentWeekStart(viewMode === 'week' ? addDays(currentWeekStart, 7) : addMonths(currentWeekStart, 1))}>Suivant →</Button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-                {weekDays.map((day) => {
-                  const dateKey = formatDateKey(day)
-                  const daySessions = sessionsByDate.get(dateKey) || []
-                  return (
-                    <div key={dateKey} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 min-h-[180px]">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
-                        <WeatherBadge weather={weather[dateKey]} />
-                      </div>
-                      <div className="space-y-2">
-                        {daySessions.length === 0 ? (
-                          <div className="text-xs text-[var(--text-muted)]/70">Aucune séance</div>
-                        ) : (
-                          daySessions.map((session) => (
-                            <div key={session.id} className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-semibold">{session.heure_debut} - {session.heure_fin}</span>
-                                <SessionStatusBadge session={session} now={now} />
-                              </div>
-                              <div className="opacity-90 mt-1">{getSessionTypeLabel(session.type)}</div>
-                              <div className="opacity-80 mt-1">{session.localisation || 'Lieu à confirmer'}</div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="flex items-center justify-between mb-4 text-[var(--text-muted)]">
+                <h3 className="text-lg font-sora font-semibold">{calendarTitle}</h3>
               </div>
+
+              {viewMode === 'week' ? (
+                <div className="relative">
+                  <PeriodBands
+                    segments={weekBandSegments}
+                    className="absolute inset-x-0 top-11 z-0 hidden md:grid grid-cols-7 gap-x-3"
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+                    {weekDays.map((day) => {
+                      const dateKey = formatDateKey(day)
+                      const daySessions = sessionsByDate.get(dateKey) || []
+                      return (
+                        <div key={dateKey} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 min-h-[180px]">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
+                            <WeatherBadge weather={weather[dateKey]} />
+                          </div>
+                          <div
+                            className="space-y-2 period-band-spacer"
+                            style={{ '--period-band-rows': weekBandRows } as CSSProperties}
+                          >
+                            {daySessions.length === 0 ? (
+                              <div className="text-xs text-[var(--text-muted)]/70">Aucune séance</div>
+                            ) : (
+                              daySessions.map((session) => (
+                                <div key={session.id} className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-semibold">{session.heure_debut} - {session.heure_fin}</span>
+                                    <SessionStatusBadge session={session} now={now} />
+                                  </div>
+                                  <div className="opacity-90 mt-1">{getSessionTypeLabel(session.type)}</div>
+                                  <div className="opacity-80 mt-1">{session.localisation || 'Lieu à confirmer'}</div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-card border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
+                  <div className="grid grid-cols-7 bg-[var(--bg-card)] text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
+                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
+                      <div key={day} className="px-2 py-2 text-center border-r border-[var(--border-subtle)] last:border-r-0">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {monthWeeks.map((week) => {
+                    const bandSegments = getWeekBandSegments(week, periods)
+                    const bandRows = bandRowCount(bandSegments)
+                    return (
+                      <div key={formatDateKey(week[0])} className="relative grid grid-cols-7 divide-x divide-[var(--border-subtle)] border-b border-[var(--border-subtle)] last:border-b-0">
+                        <PeriodBands segments={bandSegments} className="absolute inset-x-0 top-8 z-0 grid-cols-7" />
+                        {week.map((day) => {
+                          const dateKey = formatDateKey(day)
+                          const daySessions = sessionsByDate.get(dateKey) || []
+                          const isCurrentMonth = day.getMonth() === currentWeekStart.getMonth()
+                          const isToday = dateKey === formatDateKey(new Date())
+                          return (
+                            <div key={dateKey} className={`min-h-24 p-2 ${isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)] opacity-60'} ${isToday ? 'ring-2 ring-[var(--accent-secondary)] ring-inset' : ''}`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`text-sm font-semibold ${isCurrentMonth ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>
+                                  {day.getDate()}
+                                </span>
+                                <WeatherBadge weather={weather[dateKey]} />
+                              </div>
+                              <div className="space-y-1" style={bandRows > 0 ? { marginTop: bandSpacerHeight(bandRows) } : undefined}>
+                                {daySessions.slice(0, 2).map((session) => (
+                                  <div key={session.id} className="rounded px-1.5 py-1 text-[10px] font-medium border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-main)] truncate">
+                                    {session.heure_debut} · {getSessionTypeLabel(session.type)}
+                                  </div>
+                                ))}
+                                {daySessions.length > 2 && (
+                                  <div className="text-[10px] text-[var(--text-muted)] px-0.5">+ {daySessions.length - 2} autre(s)</div>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </Card>
 
             <Card className="p-6">
