@@ -14,6 +14,11 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { fetchAllPeriods, type PeriodRow } from '@/lib/periods'
 import { PeriodBands, getWeekBandSegments, bandRowCount, bandSpacerHeight } from '@/components/ui/PeriodBands'
 import { BackButton } from '@/components/ui/BackButton'
+import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
+import { WeatherBadge } from '@/components/ui/WeatherBadge'
+import type { WeatherByDate } from '@/lib/weather'
+import { EFFECTIVE_STATUS_LABELS, getEffectiveStatus } from '@/lib/session-status'
+import { useNow } from '@/lib/use-now'
 
 type PlayerOption = {
   id: string
@@ -182,6 +187,7 @@ export default function CoachSessionsPage() {
   const [goals, setGoals] = useState<GoalOption[]>([])
   const [sessions, setSessions] = useState<EnrichedSession[]>([])
   const [periods, setPeriods] = useState<PeriodRow[]>([])
+  const [weather, setWeather] = useState<WeatherByDate>({})
   const [selectedPlayerFilter, setSelectedPlayerFilter] = useState('')
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
   const [referenceDate, setReferenceDate] = useState(new Date())
@@ -195,6 +201,9 @@ export default function CoachSessionsPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [form, setForm] = useState<SessionFormState>(createEmptyForm())
   const router = useRouter()
+  // Horloge partagée : les badges passent de "Prévue" → "En cours" → "Faite"
+  // sans rechargement (recalcul au focus/visibilité + toutes les 30 s).
+  const now = useNow(30000)
 
   const visibleSessions = useMemo(() => {
     return selectedPlayerFilter
@@ -291,6 +300,18 @@ export default function CoachSessionsPage() {
     setSessions(enriched)
   }
 
+  // Météo : échec silencieux (rien d'affiché si l'API est indisponible).
+  const refreshWeather = async () => {
+    try {
+      const response = await fetch('/api/weather', { cache: 'no-store' })
+      if (!response.ok) return
+      const payload = await response.json()
+      setWeather(payload.days || {})
+    } catch (weatherError) {
+      console.error('Error fetching weather:', weatherError)
+    }
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -324,6 +345,7 @@ export default function CoachSessionsPage() {
         }
 
         await refreshSessions()
+        await refreshWeather()
       } catch (pageError) {
         console.error('Error loading coach sessions page:', pageError)
         router.push('/login')
@@ -615,7 +637,10 @@ export default function CoachSessionsPage() {
                             <span className={`text-sm font-semibold ${isCurrentMonth ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)] opacity-40'}`}>
                               {day.getDate()}
                             </span>
-                            {daySessions.length > 0 && <span className="text-[11px] text-[var(--text-muted)]">{daySessions.length}</span>}
+                            <span className="flex items-center gap-1.5">
+                              <WeatherBadge weather={weather[key]} />
+                              {daySessions.length > 0 && <span className="text-[11px] text-[var(--text-muted)]">{daySessions.length}</span>}
+                            </span>
                           </div>
 
                           <div className="space-y-2 relative" style={bandRows > 0 ? { marginTop: bandSpacerHeight(bandRows) } : undefined}>
@@ -625,8 +650,11 @@ export default function CoachSessionsPage() {
                           onClick={() => openSessionDetails(session)}
                           className={`w-full text-left rounded-input px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] hover:opacity-95 transition ${sessionTypeColors[session.type || 'entrainement'] || 'bg-[var(--bg-card)] text-[var(--accent-primary)]'}`}
                         >
-                          <div className="font-semibold truncate">
-                            {session.heure_debut} - {session.heure_fin}
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-semibold truncate">
+                              {session.heure_debut} - {session.heure_fin}
+                            </span>
+                            <SessionStatusBadge session={session} now={now} />
                           </div>
                           <div className="truncate opacity-90">{session.playerName}</div>
                           <div className="truncate opacity-80">{session.localisation || 'Localisation non renseignée'}</div>
@@ -670,7 +698,7 @@ export default function CoachSessionsPage() {
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${sessionTypeColors[session.type || 'entrainement'] || 'bg-[var(--bg-card)] text-[var(--accent-primary)]'}`}>
                         {getSessionTypeLabel(session.type)}
                       </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[var(--bg-dim)] text-[var(--text-main)]">{session.statut || 'prévue'}</span>
+                      <SessionStatusBadge session={session} now={now} />
                     </div>
                   </div>
                 </button>
@@ -955,7 +983,20 @@ export default function CoachSessionsPage() {
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Date:</strong> {selectedSession.date}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Heure:</strong> {selectedSession.heure_debut} - {selectedSession.heure_fin}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Type:</strong> {selectedSession.type}</div>
-                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Statut:</strong> {selectedSession.statut}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4">
+                  <strong>Statut:</strong>{' '}
+                  {(() => {
+                    const effective = getEffectiveStatus(selectedSession, now)
+                    return (
+                      <>
+                        {EFFECTIVE_STATUS_LABELS[effective]}
+                        {effective !== 'annulee' && selectedSession.statut && selectedSession.statut.toLowerCase() !== 'annulée' && (
+                          <span className="text-[var(--text-muted)]"> (enregistré : {selectedSession.statut})</span>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Localisation:</strong> {selectedSession.localisation || '—'}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Prix:</strong> {selectedSession.prix ?? '—'}</div>
               </div>
@@ -973,7 +1014,7 @@ export default function CoachSessionsPage() {
                   ) : (
                     selectedSession.coachAssignments.map((coach) => (
                       <span key={coach.id} className="px-3 py-1 rounded-full bg-[var(--accent-primary)] text-white text-xs font-semibold">
-                        {coach.nom} {coach.montant_coach !== null ? `(${coach.montant_coach} €)` : ''}
+                        {coach.nom} {coach.montant_coach !== null ? `(${coach.montant_coach} DT)` : ''}
                       </span>
                     ))
                   )}

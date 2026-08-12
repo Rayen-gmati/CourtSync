@@ -13,6 +13,10 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground'
 import { TennisServiceSilhouette } from '@/components/ui/TennisServiceSilhouette'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
+import { WeatherBadge } from '@/components/ui/WeatherBadge'
+import type { WeatherByDate } from '@/lib/weather'
+import { useNow } from '@/lib/use-now'
 
 type LinkedPlayer = {
   id: string
@@ -107,12 +111,15 @@ export default function ParentDashboard() {
   const [sessions, setSessions] = useState<SessionItem[]>([])
   const [matches, setMatches] = useState<MatchItem[]>([])
   const [periods, setPeriods] = useState<PeriodItem[]>([])
+  const [weather, setWeather] = useState<WeatherByDate>({})
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => startOfWeek(new Date()))
   const [weeklyRating, setWeeklyRating] = useState<RatingValue>({ id: null, rating: null })
   const [ratingSaving, setRatingSaving] = useState(false)
   const [ratingError, setRatingError] = useState('')
   const [error, setError] = useState('')
   const router = useRouter()
+  // Statuts recalculés en direct : "Prévue" → "En cours" → "Faite" sans reload.
+  const now = useNow(30000)
 
   const selectedPlayer = useMemo(
     () => linkedPlayers.find((player) => player.id === selectedPlayerId) || null,
@@ -218,6 +225,30 @@ export default function ParentDashboard() {
       active = false
     }
   }, [router])
+
+  // Météo en lecture seule : échec silencieux, rien d'affiché sans données.
+  useEffect(() => {
+    let active = true
+
+    const loadWeather = async () => {
+      try {
+        const response = await fetch('/api/weather', { cache: 'no-store' })
+        if (!response.ok) return
+        const payload = await response.json()
+        if (active) {
+          setWeather(payload.days || {})
+        }
+      } catch (weatherError) {
+        console.error('Error fetching weather:', weatherError)
+      }
+    }
+
+    void loadWeather()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedPlayerId) return
@@ -422,14 +453,20 @@ export default function ParentDashboard() {
                   const daySessions = sessionsByDate.get(dateKey) || []
                   return (
                     <div key={dateKey} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 min-h-[180px]">
-                      <div className="text-sm font-semibold mb-3 text-[var(--text-main)]">{formatDateLabel(day)}</div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
+                        <WeatherBadge weather={weather[dateKey]} />
+                      </div>
                       <div className="space-y-2">
                         {daySessions.length === 0 ? (
                           <div className="text-xs text-[var(--text-muted)]/70">Aucune séance</div>
                         ) : (
                           daySessions.map((session) => (
                             <div key={session.id} className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
-                              <div className="font-semibold">{session.heure_debut} - {session.heure_fin}</div>
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-semibold">{session.heure_debut} - {session.heure_fin}</span>
+                                <SessionStatusBadge session={session} now={now} />
+                              </div>
                               <div className="opacity-90 mt-1">{getSessionTypeLabel(session.type)}</div>
                               <div className="opacity-80 mt-1">{session.localisation || 'Lieu à confirmer'}</div>
                             </div>
@@ -460,7 +497,10 @@ export default function ParentDashboard() {
                           <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{session.date} · {session.heure_debut} - {session.heure_fin}</div>
                           <div className="text-sm text-[var(--text-muted)]">{getSessionTypeLabel(session.type)} · {session.localisation || 'Lieu à confirmer'}</div>
                         </div>
-                        <Badge type={(session.type || 'entrainement') as 'entrainement' | 'echauffement' | 'match'}>{getSessionTypeLabel(session.type)}</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge type={(session.type || 'entrainement') as 'entrainement' | 'echauffement' | 'match'}>{getSessionTypeLabel(session.type)}</Badge>
+                          <SessionStatusBadge session={session} now={now} />
+                        </div>
                       </div>
                       {session.goals.length > 0 && (
                         <div className="mt-3">
