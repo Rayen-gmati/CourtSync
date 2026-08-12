@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireCoachAdmin } from '@/lib/api-auth'
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Generate a random temporary password
 function generateTempPassword(): string {
@@ -14,11 +17,37 @@ function generateTempPassword(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Contrôle d'accès serveur : la création de comptes est réservée aux
+    // administrateurs (le rôle est validé en base, pas via le cookie).
+    const admin = await requireCoachAdmin()
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Accès réservé aux administrateurs.' },
+        { status: 403 }
+      )
+    }
+
     const { email, name, role, playerId } = await request.json()
 
     if (!email || !name || !role) {
       return NextResponse.json(
         { error: 'Missing required fields: email, name, role' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase()
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return NextResponse.json(
+        { error: 'Adresse email invalide.' },
+        { status: 400 }
+      )
+    }
+
+    const trimmedName = String(name).trim()
+    if (trimmedName.length < 2 || trimmedName.length > 120) {
+      return NextResponse.json(
+        { error: 'Le nom doit contenir entre 2 et 120 caractères.' },
         { status: 400 }
       )
     }
@@ -37,12 +66,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Pour un parent, on vérifie que le joueur associé existe réellement afin
+    // de ne pas créer de compte parent orphelin (lien silencieusement perdu).
+    if (role === 'parent' && playerId) {
+      const { data: playerRow, error: playerError } = await supabaseAdmin
+        .from('players')
+        .select('id')
+        .eq('id', playerId)
+        .maybeSingle()
+
+      if (playerError || !playerRow) {
+        return NextResponse.json(
+          { error: 'Joueur associé introuvable.' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Generate temporary password
     const tempPassword = generateTempPassword()
 
     // Create user in Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: normalizedEmail,
       password: tempPassword,
       email_confirm: true,
     })
@@ -55,13 +101,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert into users table
-    const { data: userData, error: dbError } = await supabaseAdmin
+    const { error: dbError } = await supabaseAdmin
       .from('users')
       .insert([
         {
           id: authData.user.id,
-          email,
-          nom: name,
+          email: normalizedEmail,
+          nom: trimmedName,
           role,
         },
       ])
@@ -75,7 +121,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If parent, link to player
+    // If parent, link to player. En cas d'échec du lien, on annule tout
+    // (suppression du compte auth + ligne users) pour éviter un parent orphelin.
     if (role === 'parent' && playerId) {
       const { error: linkError } = await supabaseAdmin
         .from('player_parents')
@@ -87,8 +134,13 @@ export async function POST(request: NextRequest) {
         ])
 
       if (linkError) {
-        console.error('Warning: Failed to link parent to player:', linkError)
-        // Don't fail the whole request, just log warning
+        console.error('Failed to link parent to player, rolling back:', linkError)
+        await supabaseAdmin.from('users').delete().eq('id', authData.user.id)
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+        return NextResponse.json(
+          { error: `Failed to link parent to player: ${linkError.message}` },
+          { status: 500 }
+        )
       }
     }
 
@@ -97,8 +149,8 @@ export async function POST(request: NextRequest) {
         success: true,
         user: {
           id: authData.user.id,
-          email,
-          nom: name,
+          email: normalizedEmail,
+          nom: trimmedName,
           role,
         },
         tempPassword,

@@ -21,3 +21,12 @@ export async function requireCoach(): Promise<ApiCoach | null> {
   if (!user || !['coach', 'coach_admin'].includes(user.role)) return null
   return user as ApiCoach
 }
+
+// Contrôle d'accès réservé aux administrateurs (création de comptes, etc.).
+// Réutilise la validation JWT + rôle-en-base de requireCoach, puis exige
+// explicitement le rôle coach_admin.
+export async function requireCoachAdmin(): Promise<ApiCoach | null> {
+  const coach = await requireCoach()
+  if (!coach || coach.role !== 'coach_admin') return null
+  return coach
+}

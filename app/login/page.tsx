@@ -53,30 +53,25 @@ export default function LoginPage() {
         return
       }
 
-      // Fetch user role from users table using the authenticated user id
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role, nom')
-        .eq('id', userId)
-        .single()
+      // Établit les cookies d'auth côté serveur (HttpOnly). Le rôle est relu en
+      // base par la route et renvoyé pour la redirection.
+      const sessionResponse = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: sessionData.session.access_token }),
+      })
 
-      if (userError || !userData) {
-        console.error('Supabase error while fetching user role:', {
-          userId,
-          error: userError,
-        })
-        setError('Impossible de récupérer le rôle utilisateur')
+      if (!sessionResponse.ok) {
+        const body = await sessionResponse.json().catch(() => null)
+        setError(body?.error || 'Impossible d’établir la session.')
         setLoading(false)
         return
       }
 
-      // Set cookies and redirect
-      document.cookie = `auth_token=${sessionData.session.access_token}; path=/`
-      document.cookie = `user_role=${userData.role}; path=/`
-      document.cookie = `user_name=${userData.nom}; path=/`
+      const { role } = await sessionResponse.json()
 
       // Redirect based on role
-      if (userData.role === 'parent') {
+      if (role === 'parent') {
         router.push('/dashboard/parent')
       } else {
         router.push('/dashboard/coach')

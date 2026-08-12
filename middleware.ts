@@ -1,5 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
+// ⚠️ Ce middleware ne fait QUE du routage de confort (UX) : il oriente
+// l'utilisateur vers le bon tableau de bord selon le cookie user_role.
+// Il n'est PAS une barrière de sécurité — un cookie peut être forgé sur une
+// requête HTTP directe. L'autorisation réelle est assurée côté serveur :
+//   - les routes API sensibles vérifient le rôle en base (requireCoach /
+//     requireCoachAdmin) à partir du JWT auth_token ;
+//   - les policies RLS Supabase restreignent l'accès aux données.
+// Ne jamais se reposer sur ce middleware seul pour protéger une ressource.
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
