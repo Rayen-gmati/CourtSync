@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: theme('colors.chalk');
+    --bg-card: theme('colors.white');
+    --bg-dim: theme('colors.chalkDim');
+    --text-main: theme('colors.ink');
+    --text-muted: theme('colors.slate');
+    --border-subtle: theme('colors.slate / 10%');
+    --border-strong: theme('colors.slate / 20%');
+    --accent-primary: theme('colors.courtGreen');
+    --accent-hover: theme('colors.courtGreenMid');
+    --accent-secondary: theme('colors.clay');
+    --accent-secondary-dark: theme('colors.clayDark');
+    --accent-ball: theme('colors.tennisYellow');
+    --accent-ball-dark: theme('colors.ballDark');
+    --accent-cta: theme('colors.tennisYellow');
+    --accent-cta-hover: theme('colors.ballDark');
+    --bg-green-muted: theme('colors.courtGreen / 10%');
+    --bg-clay-muted: theme('colors.clay / 10%');
+    --bg-yellow-muted: theme('colors.tennisYellow / 20%');
+  }
+
+  html[data-theme="dark"] {
+    --bg-main: theme('colors.rolandDark');
+    --bg-card: theme('colors.rolandCard');
+    --bg-dim: theme('colors.rolandCard / 50%');
+    --text-main: theme('colors.rolandText');
+    --text-muted: theme('colors.rolandSlate');
+    --border-subtle: theme('colors.rolandBorder');
+    --border-strong: theme('colors.rolandBorder');
+    --accent-primary: theme('colors.rolandClay');
+    --accent-hover: theme('colors.clayDark');
+    --accent-secondary: theme('colors.tennisYellow');
+    --accent-secondary-dark: theme('colors.ballDark');
+    --accent-ball: theme('colors.tennisYellow');
+    --accent-ball-dark: theme('colors.ballDark');
+    --accent-cta: theme('colors.rolandClay');
+    --accent-cta-hover: theme('colors.clayDark');
+    --bg-green-muted: theme('colors.rolandClay / 20%');
+    --bg-clay-muted: theme('colors.rolandClay / 15%');
+    --bg-yellow-muted: theme('colors.tennisYellow / 15%');
+  }
+}
+
+/* Labels de période du calendrier : version foncée de la couleur en mode clair,
+   version éclaircie en mode sombre (lisibilité AA sur le fond teinté à 10 %). */
+.period-label-text {
+  color: var(--period-text-light);
+}
+
+html[data-theme="dark"] .period-label-text {
+  color: var(--period-text-dark);
+}
+
+/* Espace réservé aux bandes de période au-dessus des séances.
+   Uniquement ≥ md : en mobile la grille parent s'empile (bandes masquées). */
+.period-band-spacer {
+  --period-band-rows: 0;
+}
+
+@media (min-width: 768px) {
+  .period-band-spacer {
+    margin-top: calc(var(--period-band-rows) * 22px);
+  }
+}

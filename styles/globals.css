@@ -1,0 +1,4 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Keep only Tailwind directives in app globals; styles/globals.css retained for fallback */
