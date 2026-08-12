@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { BackButton } from '@/components/ui/BackButton'
 
 
 type PlayerOption = {
@@ -222,6 +223,7 @@ export default function CoachPeriodsPage() {
       <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-main)]/95 relative z-10">
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
+            <BackButton className="mb-3" />
             <h1 className="text-3xl font-sora font-bold text-[var(--accent-primary)]">Périodes d'entraînement</h1>
             <p className="text-[var(--text-muted)] mt-1">Bonjour {userName}</p>
           </div>

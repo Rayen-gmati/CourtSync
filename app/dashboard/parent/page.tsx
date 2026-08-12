@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/Badge'
@@ -11,11 +10,9 @@ import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { StarRating as RatingStars } from '@/components/ui/StarRating'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground'
 import { TennisServiceSilhouette } from '@/components/ui/TennisServiceSilhouette'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { fetchPeriodsForPlayer } from '@/lib/periods'
-import { periodColor } from '@/lib/period-colors'
-import { PeriodBands, getWeekBandSegments, bandRowCount } from '@/components/ui/PeriodBands'
 
 type LinkedPlayer = {
   id: string
@@ -52,7 +49,6 @@ type PeriodItem = {
   date_fin: string
   notes: string | null
   tournament_name: string | null
-  color: string | null
 }
 
 type RatingValue = {
@@ -103,17 +99,6 @@ function getSessionTypeLabel(value: string | null | undefined) {
   }
 }
 
-function getPeriodTypeLabel(value: string | null | undefined) {
-  switch (value) {
-    case 'preparation':
-      return 'Préparation'
-    case 'competition':
-      return 'Compétition'
-    default:
-      return value || '—'
-  }
-}
-
 export default function ParentDashboard() {
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -135,9 +120,6 @@ export default function ParentDashboard() {
   )
 
   const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart])
-
-  const weekBandSegments = useMemo(() => getWeekBandSegments(weekDays, periods), [weekDays, periods])
-  const weekBandRows = bandRowCount(weekBandSegments)
 
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, SessionItem[]>()
@@ -255,7 +237,7 @@ export default function ParentDashboard() {
             .order('date', { ascending: false })
             .order('heure_debut', { ascending: true }),
           supabase.from('matches').select('id, date, adversaire, score, resultat').eq('player_id', selectedPlayerId).order('date', { ascending: false }),
-          fetchPeriodsForPlayer(selectedPlayerId),
+          supabase.from('periods').select('id, player_id, type, nom, date_debut, date_fin, notes, tournament_id').eq('player_id', selectedPlayerId).order('date_debut', { ascending: true }),
           supabase.from('session_goals').select('session_id, goal_id'),
           supabase.from('goals').select('id, nom, player_id').eq('player_id', selectedPlayerId).order('nom'),
           supabase
@@ -285,14 +267,14 @@ export default function ParentDashboard() {
           }
         })
 
-        const tournamentIds = periodsResult.map((period) => period.tournament_id).filter(Boolean) as string[]
+        const tournamentIds = (periodsResult.data || []).map((period) => period.tournament_id).filter(Boolean) as string[]
         let tournamentMap: Record<string, string> = {}
         if (tournamentIds.length > 0) {
           const { data: tournamentsData } = await supabase.from('tournaments').select('id, nom').in('id', tournamentIds)
           tournamentMap = Object.fromEntries((tournamentsData || []).map((tour) => [tour.id, tour.nom]))
         }
 
-        const enrichedPeriods: PeriodItem[] = periodsResult.map((period) => ({
+        const enrichedPeriods: PeriodItem[] = (periodsResult.data || []).map((period) => ({
           ...period,
           tournament_name: period.tournament_id ? tournamentMap[period.tournament_id] || null : null,
         }))
@@ -378,6 +360,7 @@ export default function ParentDashboard() {
   return (
     <div className="min-h-screen animate-fade-in relative">
       <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-main)]/95 relative z-10">
+        <CourtLinesBackground />
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
             <h1 className="text-3xl font-sora font-bold text-[var(--accent-primary)]">Espace parent</h1>
@@ -433,22 +416,14 @@ export default function ParentDashboard() {
                 </div>
               </div>
 
-              <div className="relative">
-                <PeriodBands
-                  segments={weekBandSegments}
-                  className="absolute inset-x-0 top-11 z-0 hidden md:grid grid-cols-7 gap-x-3"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-                  {weekDays.map((day) => {
-                    const dateKey = formatDateKey(day)
-                    const daySessions = sessionsByDate.get(dateKey) || []
-                    return (
-                      <div key={dateKey} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 min-h-[180px]">
-                        <div className="text-sm font-semibold mb-3 text-[var(--text-main)]">{formatDateLabel(day)}</div>
-                        <div
-                          className="space-y-2 relative period-band-spacer"
-                          style={{ '--period-band-rows': weekBandRows } as CSSProperties}
-                        >
+              <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+                {weekDays.map((day) => {
+                  const dateKey = formatDateKey(day)
+                  const daySessions = sessionsByDate.get(dateKey) || []
+                  return (
+                    <div key={dateKey} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 min-h-[180px]">
+                      <div className="text-sm font-semibold mb-3 text-[var(--text-main)]">{formatDateLabel(day)}</div>
+                      <div className="space-y-2">
                         {daySessions.length === 0 ? (
                           <div className="text-xs text-[var(--text-muted)]/70">Aucune séance</div>
                         ) : (
@@ -460,11 +435,10 @@ export default function ParentDashboard() {
                             </div>
                           ))
                         )}
-                        </div>
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  )
+                })}
               </div>
             </Card>
 
@@ -493,7 +467,7 @@ export default function ParentDashboard() {
                           <div className="text-sm font-semibold text-[var(--text-muted)] mb-2">Objectifs travaillés</div>
                           <div className="flex flex-wrap gap-2">
                             {session.goals.map((goal) => (
-                              <span key={goal.id} className="px-3 py-1 rounded-full bg-[var(--accent-ball)] text-[var(--accent-primary)] text-xs font-semibold">
+                              <span key={goal.id} className="px-3 py-1 rounded-full bg-[var(--accent-secondary)] text-[var(--accent-primary)] text-xs font-semibold">
                                 {goal.nom}
                               </span>
                             ))}
@@ -557,18 +531,11 @@ export default function ParentDashboard() {
                       <div key={period.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
                         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                           <div>
-                            <div className="font-sora font-semibold text-lg text-[var(--text-main)] flex items-center gap-2">
-                              <span
-                                className="w-3 h-3 rounded-full shrink-0"
-                                style={{ backgroundColor: periodColor(period) }}
-                                aria-hidden="true"
-                              />
-                              <span className="truncate">{period.nom}</span>
-                            </div>
-                            <div className="text-sm text-[var(--text-muted)]">{getPeriodTypeLabel(period.type)} · {period.date_debut} → {period.date_fin}</div>
+                            <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{period.nom}</div>
+                            <div className="text-sm text-[var(--text-muted)]">{period.type} · {period.date_debut} → {period.date_fin}</div>
                             {period.tournament_name && <div className="text-sm text-[var(--text-muted)]">Tournoi lié : {period.tournament_name}</div>}
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isActive ? 'bg-[var(--accent-ball)] text-[var(--accent-primary)]' : isUpcoming ? 'bg-[var(--bg-dim)] text-[var(--text-main)]' : 'bg-[var(--bg-dim)] text-[var(--text-muted)]'}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isActive ? 'bg-[var(--accent-secondary)] text-[var(--accent-primary)]' : isUpcoming ? 'bg-[var(--bg-dim)] text-[var(--text-main)]' : 'bg-[var(--bg-dim)] text-[var(--text-muted)]'}`}>
                             {isActive ? 'En cours' : isUpcoming ? 'À venir' : 'Terminé'}
                           </span>
                         </div>
