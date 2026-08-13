@@ -197,6 +197,8 @@ export default function CoachSessionsPage() {
   const [success, setSuccess] = useState('')
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [newGoalName, setNewGoalName] = useState('')
+  const [savingGoal, setSavingGoal] = useState(false)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [form, setForm] = useState<SessionFormState>(createEmptyForm())
@@ -230,12 +232,12 @@ export default function CoachSessionsPage() {
 
     const { data, error: goalsError } = await supabase
       .from('goals')
-      .select('id, nom, player_id')
+      .select('id, titre, player_id')
       .eq('player_id', playerId)
-      .order('nom')
+      .order('titre')
 
     if (!goalsError && data) {
-      setGoals(data)
+      setGoals(data.map((row) => ({ id: row.id, nom: row.titre, player_id: row.player_id })))
     } else {
       setGoals([])
     }
@@ -251,7 +253,7 @@ export default function CoachSessionsPage() {
         .order('date', { ascending: false }),
       supabase.from('session_coaches').select('session_id, coach_id, montant_coach'),
       supabase.from('session_goals').select('session_id, goal_id'),
-      supabase.from('goals').select('id, nom, player_id').order('nom'),
+      supabase.from('goals').select('id, titre, player_id').order('titre'),
       fetchAllPeriods(),
     ])
 
@@ -285,7 +287,7 @@ export default function CoachSessionsPage() {
           const goal = allGoalsData.find((item) => item.id === goalLink.goal_id)
           return {
             id: goalLink.goal_id,
-            nom: goal?.nom || 'Objectif inconnu',
+            nom: goal?.titre || 'Objectif inconnu',
           }
         })
 
@@ -413,6 +415,34 @@ export default function CoachSessionsPage() {
   const openSessionDetails = (session: EnrichedSession) => {
     setSelectedSessionId(session.id)
     setShowDetailModal(true)
+  }
+
+  // Saisie manuelle d'un objectif : créé en base pour le joueur sélectionné
+  // puis coché directement dans la séance en cours d'édition.
+  const handleAddGoal = async () => {
+    const nom = newGoalName.trim()
+    if (!nom || !form.playerId) return
+
+    setSavingGoal(true)
+    try {
+      const { data, error: goalError } = await supabase
+        .from('goals')
+        .insert({ titre: nom, player_id: form.playerId })
+        .select('id, titre, player_id')
+        .single()
+
+      if (goalError || !data) throw goalError || new Error('Goal creation failed')
+
+      const created: GoalOption = { id: data.id, nom: data.titre, player_id: data.player_id }
+      setGoals((current) => [...current, created].sort((a, b) => a.nom.localeCompare(b.nom, 'fr')))
+      setForm((current) => ({ ...current, selectedGoalIds: [...current.selectedGoalIds, created.id] }))
+      setNewGoalName('')
+    } catch (goalError) {
+      console.error('Error creating goal:', goalError)
+      setError(goalError instanceof Error ? goalError.message : 'Impossible de créer l’objectif.')
+    } finally {
+      setSavingGoal(false)
+    }
   }
 
   const handleStatusChange = async (sessionId: string, nextStatus: string) => {
@@ -919,7 +949,31 @@ export default function CoachSessionsPage() {
               <div>
                 <label className="block text-sm font-semibold text-[var(--text-muted)] mb-3">Objectifs travaillés</label>
                 {form.playerId ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="text"
+                        value={newGoalName}
+                        onChange={(e) => setNewGoalName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            void handleAddGoal()
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 border border-[var(--border-strong)] rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 text-[var(--text-main)] bg-[var(--bg-card)]"
+                        placeholder="Saisir un nouvel objectif (ex : travail du revers)..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleAddGoal()}
+                        disabled={savingGoal || newGoalName.trim() === ''}
+                        className="px-4 py-2 rounded-input border border-[var(--border-strong)] text-[var(--text-main)] hover:bg-[var(--bg-dim)] transition disabled:opacity-50"
+                      >
+                        {savingGoal ? 'Ajout...' : 'Ajouter l’objectif'}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
                     {goals.length === 0 ? (
                       <p className="text-[var(--text-muted)]">Aucun objectif disponible pour ce joueur.</p>
                     ) : (
@@ -944,6 +998,7 @@ export default function CoachSessionsPage() {
                         )
                       })
                     )}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-[var(--text-muted)]">Sélectionnez un joueur pour afficher ses objectifs.</p>

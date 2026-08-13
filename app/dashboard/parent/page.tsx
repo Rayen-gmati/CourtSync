@@ -66,6 +66,27 @@ type RatingValue = {
   rating: number | null
 }
 
+type ReclamationItem = {
+  id: string
+  player_id: string | null
+  sujet: string
+  message: string
+  statut: string
+  created_at: string
+  coach_ids: string[]
+}
+
+function getReclamationLabel(statut: string) {
+  switch (statut) {
+    case 'en_cours':
+      return 'En cours'
+    case 'traitee':
+      return 'Traitée'
+    default:
+      return 'Nouvelle'
+  }
+}
+
 function pad(value: number) {
   return `${value}`.padStart(2, '0')
 }
@@ -148,6 +169,14 @@ export default function ParentDashboard() {
   const [ratingError, setRatingError] = useState('')
   const [error, setError] = useState('')
   const [detailSession, setDetailSession] = useState<SessionItem | null>(null)
+  const [reclamations, setReclamations] = useState<ReclamationItem[]>([])
+  const [reclamationSujet, setReclamationSujet] = useState('')
+  const [reclamationMessage, setReclamationMessage] = useState('')
+  const [reclamationSaving, setReclamationSaving] = useState(false)
+  const [reclamationError, setReclamationError] = useState('')
+  const [reclamationSuccess, setReclamationSuccess] = useState('')
+  const [coaches, setCoaches] = useState<Array<{ id: string; nom: string }>>([])
+  const [reclamationCoachIds, setReclamationCoachIds] = useState<string[]>([])
   const router = useRouter()
   // Statuts recalculés en direct : "Prévue" → "En cours" → "Faite" sans reload.
   const now = useNow(30000)
@@ -224,6 +253,35 @@ export default function ParentDashboard() {
         if (!active) return
         setUserName(userData.nom)
         setParentId(userData.id)
+
+        // Coachs disponibles : destinataires possibles d'une réclamation.
+        const { data: coachesData } = await supabase
+          .from('users')
+          .select('id, nom')
+          .in('role', ['coach', 'coach_admin'])
+          .order('nom')
+
+        if (active && coachesData) {
+          setCoaches(coachesData)
+          // Par défaut, la réclamation part à tous les coachs.
+          setReclamationCoachIds((current) => (current.length > 0 ? current : coachesData.map((coach) => coach.id)))
+        }
+
+        // Réclamations du parent : échec silencieux si la table n'existe pas
+        // encore (migration non exécutée).
+        const { data: reclamationsData, error: reclamationsError } = await supabase
+          .from('reclamations')
+          .select('id, player_id, sujet, message, statut, created_at, coach_ids')
+          .eq('parent_id', userData.id)
+          .order('created_at', { ascending: false })
+
+        if (active) {
+          if (reclamationsError) {
+            console.warn('Reclamations unavailable:', reclamationsError.message)
+          } else {
+            setReclamations(reclamationsData || [])
+          }
+        }
 
         const { data: linksData, error: linksError } = await supabase
           .from('player_parents')
@@ -323,10 +381,10 @@ export default function ParentDashboard() {
             .eq('player_id', selectedPlayerId)
             .order('date', { ascending: false })
             .order('heure_debut', { ascending: true }),
-          supabase.from('matches').select('id, date, adversaire, score, resultat').eq('player_id', selectedPlayerId).order('date', { ascending: false }),
+          supabase.from('matches').select('id, date, adversaire, score, gagne').eq('player_id', selectedPlayerId).order('date', { ascending: false }),
           supabase.from('periods').select('id, player_id, type, nom, date_debut, date_fin, notes, tournament_id, color').eq('player_id', selectedPlayerId).order('date_debut', { ascending: true }),
           supabase.from('session_goals').select('session_id, goal_id'),
-          supabase.from('goals').select('id, nom, player_id').eq('player_id', selectedPlayerId).order('nom'),
+          supabase.from('goals').select('id, titre, player_id').eq('player_id', selectedPlayerId).order('titre'),
           supabase
             .from('weekly_ratings')
             .select('id, rating')
@@ -356,7 +414,7 @@ export default function ParentDashboard() {
             .filter((row) => row.session_id === session.id)
             .map((row) => {
               const goal = goalsData.find((item) => item.id === row.goal_id)
-              return { id: row.goal_id, nom: goal?.nom || 'Objectif inconnu' }
+              return { id: row.goal_id, nom: goal?.titre || 'Objectif inconnu' }
             })
 
           const coachNames = sessionCoachesData
@@ -384,7 +442,15 @@ export default function ParentDashboard() {
 
         if (active) {
           setSessions(enrichedSessions)
-          setMatches((matchesResult.data || []) as MatchItem[])
+          setMatches(
+            ((matchesResult.data || []) as Array<{ id: string; date: string; adversaire: string | null; score: string | null; gagne: boolean | null }>).map((row) => ({
+              id: row.id,
+              date: row.date,
+              adversaire: row.adversaire,
+              score: row.score,
+              resultat: row.gagne === true ? 'gagné' : row.gagne === false ? 'perdu' : null,
+            }))
+          )
           setPeriods(enrichedPeriods)
           setWeeklyRating({ id: ratingResult.data?.id || null, rating: ratingResult.data?.rating || null })
         }
@@ -445,6 +511,36 @@ export default function ParentDashboard() {
       setRatingError(describeRatingError(err))
     } finally {
       setRatingSaving(false)
+    }
+  }
+
+  const handleSendReclamation = async () => {
+    const sujet = reclamationSujet.trim()
+    const message = reclamationMessage.trim()
+    if (!sujet || !message || !parentId || reclamationCoachIds.length === 0) return
+
+    setReclamationSaving(true)
+    setReclamationError('')
+    setReclamationSuccess('')
+
+    try {
+      const { data, error: insertError } = await supabase
+        .from('reclamations')
+        .insert({ parent_id: parentId, player_id: selectedPlayerId || null, sujet, message, coach_ids: reclamationCoachIds })
+        .select('id, player_id, sujet, message, statut, created_at, coach_ids')
+        .single()
+
+      if (insertError || !data) throw insertError || new Error('Reclamation send failed')
+
+      setReclamations((current) => [data, ...current])
+      setReclamationSujet('')
+      setReclamationMessage('')
+      setReclamationSuccess('Réclamation envoyée au coach.')
+    } catch (sendError) {
+      console.error('Error sending reclamation:', sendError)
+      setReclamationError('Impossible d’envoyer la réclamation. Réessayez plus tard.')
+    } finally {
+      setReclamationSaving(false)
     }
   }
 
@@ -567,7 +663,12 @@ export default function ParentDashboard() {
                               <div className="text-xs text-[var(--text-muted)]/70">Aucune séance</div>
                             ) : (
                               daySessions.map((session) => (
-                                <div key={session.id} className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
+                                <div
+                                  key={session.id}
+                                  onClick={() => setDetailSession(session)}
+                                  title="Voir les détails de la séance"
+                                  className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)] cursor-pointer hover:opacity-90 transition"
+                                >
                                   <div className="flex items-center justify-between gap-1">
                                     <span className="font-semibold">{session.heure_debut} - {session.heure_fin}</span>
                                     <SessionStatusBadge session={session} now={now} />
@@ -614,7 +715,12 @@ export default function ParentDashboard() {
                               </div>
                               <div className="space-y-1" style={bandRows > 0 ? { marginTop: bandSpacerHeight(bandRows) } : undefined}>
                                 {daySessions.slice(0, 2).map((session) => (
-                                  <div key={session.id} className="rounded px-1.5 py-1 text-[10px] font-medium border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-main)] truncate">
+                                  <div
+                                    key={session.id}
+                                    onClick={() => setDetailSession(session)}
+                                    title="Voir les détails de la séance"
+                                    className="rounded px-1.5 py-1 text-[10px] font-medium border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-main)] truncate cursor-pointer hover:opacity-90 transition"
+                                  >
                                     {session.heure_debut} · {getSessionTypeLabel(session.type)}
                                   </div>
                                 ))}
@@ -740,31 +846,218 @@ export default function ParentDashboard() {
               )}
             </Card>
 
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+          </>
+        )}
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Réclamations</h2>
+              <p className="text-[var(--text-muted)] mt-1">Signalez un problème ou une remarque au coach.</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 space-y-4">
+            {reclamationError && <p className="text-sm text-[var(--accent-secondary-dark)]">{reclamationError}</p>}
+            {reclamationSuccess && <p className="text-sm text-[var(--accent-primary)]">{reclamationSuccess}</p>}
+            <div>
+              <label className="block text-sm font-semibold text-[var(--text-muted)] mb-2">Sujet</label>
+              <input
+                type="text"
+                value={reclamationSujet}
+                onChange={(e) => setReclamationSujet(e.target.value)}
+                maxLength={200}
+                className="w-full px-4 py-2 border border-[var(--border-strong)] rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 text-[var(--text-main)] bg-[var(--bg-card)]"
+                placeholder="Ex : créneau de mercredi à décaler"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[var(--text-muted)] mb-2">Message</label>
+              <textarea
+                value={reclamationMessage}
+                onChange={(e) => setReclamationMessage(e.target.value)}
+                maxLength={2000}
+                className="w-full px-4 py-3 border border-[var(--border-strong)] rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 text-[var(--text-main)] bg-[var(--bg-card)] min-h-[100px]"
+                placeholder="Décrivez votre réclamation..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[var(--text-muted)] mb-2">Envoyer à</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReclamationCoachIds(coaches.map((coach) => coach.id))}
+                  className={`px-4 py-2 rounded-input text-sm font-semibold transition border ${
+                    reclamationCoachIds.length === coaches.length && coaches.length > 0
+                      ? 'bg-[var(--accent-cta)] text-white border-transparent'
+                      : 'bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-strong)] hover:bg-[var(--bg-dim)]'
+                  }`}
+                >
+                  Tous les coachs
+                </button>
+                {coaches.map((coach) => {
+                  const selected = reclamationCoachIds.includes(coach.id)
+                  return (
+                    <button
+                      key={coach.id}
+                      type="button"
+                      onClick={() =>
+                        setReclamationCoachIds((current) =>
+                          selected ? current.filter((id) => id !== coach.id) : [...current, coach.id]
+                        )
+                      }
+                      className={`px-4 py-2 rounded-input text-sm font-semibold transition border ${
+                        selected
+                          ? 'bg-[var(--accent-primary)] text-white border-transparent'
+                          : 'bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-strong)] hover:bg-[var(--bg-dim)]'
+                      }`}
+                    >
+                      {coach.nom}
+                    </button>
+                  )
+                })}
+              </div>
+              {reclamationCoachIds.length === 0 && (
+                <p className="mt-2 text-xs text-[var(--accent-secondary-dark)]">Sélectionnez au moins un coach destinataire.</p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="accent"
+                onClick={() => void handleSendReclamation()}
+                disabled={reclamationSaving || reclamationSujet.trim() === '' || reclamationMessage.trim() === '' || reclamationCoachIds.length === 0}
+              >
+                {reclamationSaving ? 'Envoi...' : 'Envoyer la réclamation'}
+              </Button>
+            </div>
+          </div>
+
+          {reclamations.length > 0 && (
+            <div className="space-y-3 mt-6">
+              {reclamations.map((item) => (
+                <div key={item.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="font-sora font-semibold text-[var(--text-main)]">{item.sujet}</div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.statut === 'traitee' ? 'bg-[var(--bg-green-muted)] text-[var(--accent-primary)]' : item.statut === 'en_cours' ? 'bg-[var(--bg-yellow-muted)] text-[var(--text-main)]' : 'bg-[var(--bg-clay-muted)] text-[var(--accent-secondary-dark)]'}`}>
+                      {getReclamationLabel(item.statut)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--text-muted)] whitespace-pre-line">{item.message}</p>
+                  <div className="mt-2 text-xs text-[var(--text-muted)]/80">
+                    {new Date(item.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {item.player_id ? ` · ${linkedPlayers.find((player) => player.id === item.player_id)?.nom || 'Joueur'}` : ''}
+                    {` · Envoyé à : ${
+                      !item.coach_ids || item.coach_ids.length === 0 || item.coach_ids.length === coaches.length
+                        ? 'Tous les coachs'
+                        : item.coach_ids.map((id) => coaches.find((coach) => coach.id === id)?.nom || 'Coach').join(', ')
+                    }`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {selectedPlayer && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Notation hebdomadaire</h2>
+                <p className="text-[var(--text-muted)] mt-1">Donnez votre appréciation pour la qualité globale de l’entraînement de cette semaine.</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Notation hebdomadaire</h2>
-                  <p className="text-[var(--text-muted)] mt-1">Donnez votre appréciation pour la qualité globale de l’entraînement de cette semaine.</p>
+                  <div className="font-sora font-semibold text-lg text-[var(--text-main)]"><span className="tabular-nums">Semaine du {formatDateKey(currentWeekStart)}</span></div>
+                  <div className="text-sm text-[var(--text-muted)]">Votre note sera sauvegardée pour ce joueur et cette semaine.</div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <RatingStars rating={weeklyRating.rating || 0} interactive onChange={handleSaveRating} />
+                  {ratingSaving && <span className="text-sm text-[var(--text-muted)]">Sauvegarde…</span>}
+                </div>
+              </div>
+              {ratingError && <p className="mt-4 text-sm text-[var(--accent-secondary-dark)]">{ratingError}</p>}
+            </div>
+          </Card>
+        )}
+      </main>
+
+      {detailSession && (
+        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-2xl rounded-card shadow-2xl p-6 md:p-8 my-6 border border-[var(--border-strong)]">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Détails de la séance</h3>
+                <p className="text-[var(--text-muted)] mt-1">{selectedPlayer?.nom}</p>
+              </div>
+              <button
+                onClick={() => setDetailSession(null)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-main)] text-2xl leading-none"
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm text-[var(--text-main)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Date :</strong> {detailSession.date}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Heure :</strong> {detailSession.heure_debut} - {detailSession.heure_fin}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Type :</strong> {getSessionTypeLabel(detailSession.type)}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Statut :</strong> {EFFECTIVE_STATUS_LABELS[getEffectiveStatus(detailSession, now)]}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Localisation :</strong> {detailSession.localisation || '—'}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Prix :</strong> {detailSession.prix !== null ? `${detailSession.prix} DT` : '—'}</div>
+              </div>
+
+              <div className="rounded-input bg-[var(--bg-dim)] p-4">
+                <strong>Notes coach :</strong>
+                <p className="mt-2 whitespace-pre-line text-[var(--text-muted)]">{detailSession.notes_coach || '—'}</p>
+              </div>
+
+              <div className="rounded-input bg-[var(--bg-dim)] p-4">
+                <strong>Coachs assignés :</strong>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {detailSession.coachNames.length === 0 ? (
+                    <span className="text-[var(--text-muted)]">Aucun coach assigné.</span>
+                  ) : (
+                    detailSession.coachNames.map((name) => (
+                      <span key={name} className="px-3 py-1 rounded-full bg-[var(--accent-primary)] text-white text-xs font-semibold">
+                        {name}
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="font-sora font-semibold text-lg text-[var(--text-main)]"><span className="tabular-nums">Semaine du {formatDateKey(currentWeekStart)}</span></div>
-                    <div className="text-sm text-[var(--text-muted)]">Votre note sera sauvegardée pour ce joueur et cette semaine.</div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <RatingStars rating={weeklyRating.rating || 0} interactive onChange={handleSaveRating} />
-                    {ratingSaving && <span className="text-sm text-[var(--text-muted)]">Sauvegarde…</span>}
-                  </div>
+              <div className="rounded-input bg-[var(--bg-dim)] p-4">
+                <strong>Objectifs travaillés :</strong>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {detailSession.goals.length === 0 ? (
+                    <span className="text-[var(--text-muted)]">Aucun objectif lié.</span>
+                  ) : (
+                    detailSession.goals.map((goal) => (
+                      <span key={goal.id} className="px-3 py-1 rounded-full bg-[var(--accent-secondary)] text-[var(--accent-primary)] text-xs font-semibold">
+                        {goal.nom}
+                      </span>
+                    ))
+                  )}
                 </div>
-                {ratingError && <p className="mt-4 text-sm text-[var(--accent-secondary-dark)]">{ratingError}</p>}
               </div>
-            </Card>
-          </>
-        )}
-      </main>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setDetailSession(null)}
+                className="px-5 py-3 rounded-input border border-[var(--border-strong)] text-[var(--text-muted)] hover:bg-[var(--bg-dim)] transition"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

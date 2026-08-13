@@ -44,6 +44,11 @@ const dashboardLinks = [
     title: 'Historique des gains',
     description: 'Détail mensuel des gains par joueur et par séance faite',
   },
+  {
+    href: '/dashboard/coach/reclamations',
+    title: 'Réclamations des parents',
+    description: 'Lire et traiter les réclamations envoyées par les parents',
+  },
 ]
 
 export default function CoachDashboard() {
