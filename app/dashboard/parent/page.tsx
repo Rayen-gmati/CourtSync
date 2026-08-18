@@ -15,6 +15,7 @@ import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground'
 import { TennisServiceSilhouette } from '@/components/ui/TennisServiceSilhouette'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
+import { MobileAgenda } from '@/components/ui/MobileAgenda'
 import { MatchDetailsModal } from '@/components/MatchDetailsModal'
 import { MatchDetailsRow, MATCH_RESULT_LABELS, computeMatchResult, formatScore } from '@/lib/match-stats'
 import { EFFECTIVE_STATUS_LABELS, getEffectiveStatus } from '@/lib/session-status'
@@ -657,6 +658,19 @@ export default function ParentDashboard() {
                             <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
                             <WeatherBadge weather={weather[dateKey]} />
                           </div>
+                          {/* Chips périodes visibles uniquement sur mobile (bandes masquées). */}
+                          {periods.some((p) => p.date_debut <= dateKey && p.date_fin >= dateKey) && (
+                            <div className="mb-2 flex flex-wrap gap-1.5 md:hidden">
+                              {periods
+                                .filter((p) => p.date_debut <= dateKey && p.date_fin >= dateKey)
+                                .map((p) => (
+                                  <span key={p.id} className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-[var(--bg-dim)] text-[var(--text-main)]">
+                                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color || 'var(--accent-secondary)' }} />
+                                    {p.nom}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
                           <div
                             className="space-y-2 period-band-spacer"
                             style={{ '--period-band-rows': weekBandRows } as CSSProperties}
@@ -687,7 +701,7 @@ export default function ParentDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-card border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
+                <div className="overflow-hidden rounded-card border border-[var(--border-subtle)] bg-[var(--bg-dim)] hidden md:block">
                   <div className="grid grid-cols-7 bg-[var(--bg-card)] text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
                     {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
                       <div key={day} className="px-2 py-2 text-center border-r border-[var(--border-subtle)] last:border-r-0">
@@ -736,6 +750,40 @@ export default function ParentDashboard() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {/* Agenda mobile pour la vue mois : la grille 7 colonnes est illisible sous md. */}
+              {viewMode === 'month' && (
+                <div className="md:hidden">
+                  <MobileAgenda
+                    days={monthWeeks.flat().filter((day) => day.getMonth() === currentWeekStart.getMonth())}
+                    sessionsFor={(key) =>
+                      (sessionsByDate.get(key) || []).map((session) => ({
+                        id: session.id,
+                        date: session.date,
+                        heure_debut: session.heure_debut,
+                        heure_fin: session.heure_fin,
+                        type: session.type,
+                        statut: session.statut,
+                        label: getSessionTypeLabel(session.type),
+                        sublabel: session.localisation || undefined,
+                      }))
+                    }
+                    periodsFor={(key) =>
+                      periods
+                        .filter((period) => period.date_debut <= key && period.date_fin >= key)
+                        .map((period) => ({ id: period.id, nom: period.nom, color: period.color }))
+                    }
+                    weather={weather}
+                    now={now}
+                    showEmptyDays={false}
+                    onSessionClick={(id) => {
+                      const session = sessions.find((item) => item.id === id)
+                      if (session) setDetailSession(session)
+                    }}
+                    emptyMessage="Aucune séance ce jour."
+                  />
                 </div>
               )}
             </Card>
@@ -1030,8 +1078,8 @@ export default function ParentDashboard() {
       </main>
 
       {detailSession && (
-        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-2xl rounded-card shadow-2xl p-6 md:p-8 my-6 border border-[var(--border-strong)]">
+        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-2xl rounded-none md:rounded-card shadow-2xl p-5 md:p-8 my-0 md:my-6 min-h-full md:min-h-0 border border-[var(--border-strong)]">
             <div className="flex items-start justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Détails de la séance</h3>

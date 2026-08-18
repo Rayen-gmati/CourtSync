@@ -14,8 +14,10 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { fetchAllPeriods, type PeriodRow } from '@/lib/periods'
 import { PeriodBands, getWeekBandSegments, bandRowCount, bandSpacerHeight } from '@/components/ui/PeriodBands'
 import { BackButton } from '@/components/ui/BackButton'
+import { CoachBottomNav } from '@/components/CoachBottomNav'
 import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
 import { MatchDetailsModal } from '@/components/MatchDetailsModal'
+import { MobileAgenda } from '@/components/ui/MobileAgenda'
 import { WeatherBadge } from '@/components/ui/WeatherBadge'
 import type { WeatherByDate } from '@/lib/weather'
 import { EFFECTIVE_STATUS_LABELS, getEffectiveStatus } from '@/lib/session-status'
@@ -586,7 +588,7 @@ export default function CoachSessionsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-6 pt-10 pb-24 md:pb-10 space-y-8 relative z-10">
         <Card className="p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between mb-6">
             <div>
@@ -638,7 +640,7 @@ export default function CoachSessionsPage() {
             <span className="text-sm">{filteredSessions.length} séance(s)</span>
           </div>
 
-          <div className="overflow-hidden rounded-card border border-[var(--border-subtle)] bg-[var(--bg-dim)]">
+          <div className="overflow-hidden rounded-card border border-[var(--border-subtle)] bg-[var(--bg-dim)] hidden md:block">
             <div className={`grid ${viewMode === 'month' ? 'grid-cols-7' : 'grid-cols-7'} bg-[var(--bg-card)] text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]`}>
               {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
                 <div key={day} className="px-3 py-3 text-center border-r border-[var(--border-subtle)] last:border-r-0">
@@ -711,6 +713,39 @@ export default function CoachSessionsPage() {
               })}
             </div>
           </div>
+
+          {/* Agenda mobile : liste par jour, lisible à 375px. */}
+          <div className="md:hidden">
+            <MobileAgenda
+              days={calendarDays}
+              sessionsFor={(key) =>
+                (sessionsByDate.get(key) || []).map((session) => ({
+                  id: session.id,
+                  date: session.date,
+                  heure_debut: session.heure_debut,
+                  heure_fin: session.heure_fin,
+                  type: session.type,
+                  statut: session.statut,
+                  label: session.playerName,
+                  sublabel: session.localisation || undefined,
+                }))
+              }
+              periodsFor={(key) =>
+                visiblePeriods
+                  .filter((period) => period.date_debut <= key && period.date_fin >= key)
+                  .map((period) => ({ id: period.id, nom: period.nom, color: period.color }))
+              }
+              weather={weather}
+              now={now}
+              showEmptyDays={viewMode === 'week'}
+              onDayClick={(key) => openNewSessionForm(key)}
+              onSessionClick={(id) => {
+                const session = filteredSessions.find((item) => item.id === id)
+                if (session) openSessionDetails(session)
+              }}
+              emptyMessage="Aucune séance ce jour."
+            />
+          </div>
         </Card>
 
         <Card className="p-6">
@@ -745,10 +780,12 @@ export default function CoachSessionsPage() {
           )}
         </Card>
       </main>
+      
+        <CoachBottomNav />
 
       {showFormModal && (
-        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-4xl rounded-card shadow-2xl p-6 md:p-8 my-6 border border-[var(--border-strong)]">
+        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-4xl rounded-none md:rounded-card shadow-2xl p-5 md:p-8 my-0 md:my-6 min-h-full md:min-h-0 border border-[var(--border-strong)]">
             <div className="flex items-start justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">{editingSessionId ? 'Modifier la séance' : 'Ajouter une séance'}</h3>
@@ -1029,8 +1066,8 @@ export default function CoachSessionsPage() {
       )}
 
       {showDetailModal && selectedSession && (
-        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-2xl rounded-card shadow-2xl p-6 md:p-8 my-6 border border-[var(--border-strong)]">
+        <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+          <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-2xl rounded-none md:rounded-card shadow-2xl p-5 md:p-8 my-0 md:my-6 min-h-full md:min-h-0 border border-[var(--border-strong)]">
             <div className="flex items-start justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Détails de la séance</h3>

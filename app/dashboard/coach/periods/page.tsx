@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/Select'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BackButton } from '@/components/ui/BackButton'
+import { CoachBottomNav } from '@/components/CoachBottomNav'
 
 
 type PlayerOption = {
@@ -232,7 +233,7 @@ export default function CoachPeriodsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-6 pt-10 pb-24 md:pb-10 space-y-8 relative z-10">
         <Card className="p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between mb-6">
             <div>
@@ -376,6 +377,8 @@ export default function CoachPeriodsPage() {
           )}
         </Card>
       </main>
+
+      <CoachBottomNav />
     </div>
   )
 }

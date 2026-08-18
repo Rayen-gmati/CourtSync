@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BackButton } from '@/components/ui/BackButton'
+import { CoachBottomNav } from '@/components/CoachBottomNav'
 import { Select } from '@/components/ui/Select'
 import { StarRating } from '@/components/ui/StarRating'
 
@@ -262,7 +263,7 @@ export default function CoachReclamationsPage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10 space-y-6">
+      <main className="max-w-5xl mx-auto px-6 pt-10 pb-24 md:pb-10 space-y-6">
         {error && (
           <div className="rounded-input border border-[var(--border-strong)] bg-[var(--bg-clay-muted)] px-4 py-3 text-sm text-[var(--accent-secondary-dark)]">
             {error}
@@ -393,6 +394,8 @@ export default function CoachReclamationsPage() {
           )}
         </Card>
       </main>
+
+      <CoachBottomNav />
     </div>
   )
 }

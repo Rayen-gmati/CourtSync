@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BackButton } from '@/components/ui/BackButton'
+import { CoachBottomNav } from '@/components/CoachBottomNav'
 
 type PlayerEarning = {
   playerId: string
@@ -158,7 +159,7 @@ export default function CoachEarningsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-6 pt-10 pb-24 md:pb-10 space-y-8 relative z-10">
         {error && (
           <div className="bg-[var(--bg-clay-muted)] border border-[var(--accent-secondary-dark)]/20 text-[var(--accent-secondary-dark)] px-4 py-3 rounded">
             {error}
@@ -246,6 +247,8 @@ export default function CoachEarningsPage() {
           )}
         </Card>
       </main>
+
+      <CoachBottomNav />
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card'
 import { CourtDivider } from '@/components/ui/CourtDivider'
 
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { CoachBottomNav } from '@/components/CoachBottomNav'
 
 type EarningsSummary = {
   currency: string
@@ -130,7 +131,7 @@ export default function CoachDashboard() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-12 relative z-10">
+      <main className="max-w-6xl mx-auto px-6 pt-12 pb-24 md:pb-12 relative z-10">
         {earnings && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <Card className="p-6">
@@ -169,6 +170,8 @@ export default function CoachDashboard() {
           </div>
         </Card>
       </main>
+
+      <CoachBottomNav />
     </div>
   )
 }

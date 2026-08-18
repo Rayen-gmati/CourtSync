@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/Select'
 import { StarRating } from '@/components/ui/StarRating'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { CoachBottomNav } from '@/components/CoachBottomNav'
 
 
 type Player = {
@@ -197,7 +198,7 @@ export default function CoachPlayersPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-12 space-y-10 relative z-10">
+      <main className="max-w-6xl mx-auto px-6 pt-12 pb-24 md:pb-12 space-y-10 relative z-10">
         <Card className="p-8">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>
@@ -338,6 +339,8 @@ export default function CoachPlayersPage() {
           )}
         </Card>
       </main>
+
+      <CoachBottomNav />
     </div>
   )
 }
