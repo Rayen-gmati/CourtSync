@@ -15,6 +15,8 @@ import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground'
 import { TennisServiceSilhouette } from '@/components/ui/TennisServiceSilhouette'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
+import { MatchDetailsModal } from '@/components/MatchDetailsModal'
+import { MatchDetailsRow, MATCH_RESULT_LABELS, computeMatchResult, formatScore } from '@/lib/match-stats'
 import { EFFECTIVE_STATUS_LABELS, getEffectiveStatus } from '@/lib/session-status'
 import { WeatherBadge } from '@/components/ui/WeatherBadge'
 import { PeriodBands, getWeekBandSegments, bandRowCount, bandSpacerHeight } from '@/components/ui/PeriodBands'
@@ -41,12 +43,9 @@ type SessionItem = {
   goals: Array<{ id: string; nom: string }>
 }
 
-type MatchItem = {
-  id: string
-  date: string
-  adversaire: string | null
-  score: string | null
-  resultat: string | null
+type MatchHistoryItem = {
+  session: SessionItem
+  details: MatchDetailsRow | null
 }
 
 type PeriodItem = {
@@ -159,7 +158,8 @@ export default function ParentDashboard() {
   const [linkedPlayers, setLinkedPlayers] = useState<LinkedPlayer[]>([])
   const [selectedPlayerId, setSelectedPlayerId] = useState('')
   const [sessions, setSessions] = useState<SessionItem[]>([])
-  const [matches, setMatches] = useState<MatchItem[]>([])
+  const [matchHistory, setMatchHistory] = useState<MatchHistoryItem[]>([])
+  const [matchSession, setMatchSession] = useState<SessionItem | null>(null)
   const [periods, setPeriods] = useState<PeriodItem[]>([])
   const [weather, setWeather] = useState<WeatherByDate>({})
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
@@ -298,7 +298,7 @@ export default function ParentDashboard() {
           if (active) {
             setLinkedPlayers([])
             setSessions([])
-            setMatches([])
+            setMatchHistory([])
             setPeriods([])
             setWeeklyRating({ id: null, rating: null })
             setLoading(false)
@@ -374,14 +374,13 @@ export default function ParentDashboard() {
         setError('')
         setRatingError('')
 
-        const [sessionsResult, matchesResult, periodsResult, sessionGoalsResult, goalsResult, ratingResult, sessionCoachesResult] = await Promise.all([
+        const [sessionsResult, periodsResult, sessionGoalsResult, goalsResult, ratingResult, sessionCoachesResult] = await Promise.all([
           supabase
             .from('sessions')
             .select('id, player_id, date, heure_debut, heure_fin, localisation, type, statut, notes_coach, prix')
             .eq('player_id', selectedPlayerId)
             .order('date', { ascending: false })
             .order('heure_debut', { ascending: true }),
-          supabase.from('matches').select('id, date, adversaire, score, gagne').eq('player_id', selectedPlayerId).order('date', { ascending: false }),
           supabase.from('periods').select('id, player_id, type, nom, date_debut, date_fin, notes, tournament_id, color').eq('player_id', selectedPlayerId).order('date_debut', { ascending: true }),
           supabase.from('session_goals').select('session_id, goal_id'),
           supabase.from('goals').select('id, titre, player_id').eq('player_id', selectedPlayerId).order('titre'),
@@ -442,15 +441,18 @@ export default function ParentDashboard() {
 
         if (active) {
           setSessions(enrichedSessions)
-          setMatches(
-            ((matchesResult.data || []) as Array<{ id: string; date: string; adversaire: string | null; score: string | null; gagne: boolean | null }>).map((row) => ({
-              id: row.id,
-              date: row.date,
-              adversaire: row.adversaire,
-              score: row.score,
-              resultat: row.gagne === true ? 'gagné' : row.gagne === false ? 'perdu' : null,
-            }))
-          )
+
+          // Historique des matchs : séances de type « match » + fiche détaillée éventuelle.
+          const matchSessions = enrichedSessions.filter((session) => session.type === 'match')
+          let detailsBySession: Record<string, MatchDetailsRow> = {}
+          if (matchSessions.length > 0) {
+            const { data: detailsData } = await supabase
+              .from('match_details')
+              .select('*')
+              .in('session_id', matchSessions.map((session) => session.id))
+            for (const detail of detailsData || []) detailsBySession[detail.session_id] = detail as MatchDetailsRow
+          }
+          setMatchHistory(matchSessions.map((session) => ({ session, details: detailsBySession[session.id] || null })))
           setPeriods(enrichedPeriods)
           setWeeklyRating({ id: ratingResult.data?.id || null, rating: ratingResult.data?.rating || null })
         }
@@ -791,22 +793,65 @@ export default function ParentDashboard() {
                   <p className="text-[var(--text-muted)] mt-1">Résultats des matchs joués par votre enfant.</p>
                 </div>
               </div>
-              {matches.length === 0 ? (
+              {matchHistory.length === 0 ? (
                 <EmptyState message="Aucun match enregistré pour ce joueur." />
               ) : (
-                <div className="space-y-3">
-                  {matches.map((match) => (
-                    <div key={match.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{match.date}</div>
-                        <div className="text-sm text-[var(--text-muted)]">Adversaire : {match.adversaire || '—'}</div>
-                        <div className="text-sm text-[var(--text-muted)]">Score : {match.score || '—'}</div>
+                <div className="space-y-4">
+                  {(() => {
+                    const results = matchHistory.map((item) =>
+                      item.details ? computeMatchResult(item.details.sets, item.details.result_override) : null
+                    )
+                    const wins = results.filter((result) => result === 'victoire').length
+                    const losses = results.filter((result) => result === 'defaite').length
+                    const decided = wins + losses
+                    return (
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="rounded-input bg-[var(--bg-green-muted)] px-3 py-3">
+                          <div className="text-2xl font-sora font-bold text-[var(--accent-primary)] tabular-nums">{wins}</div>
+                          <div className="text-xs font-semibold text-[var(--text-muted)]">Victoires</div>
+                        </div>
+                        <div className="rounded-input bg-[var(--bg-clay-muted)] px-3 py-3">
+                          <div className="text-2xl font-sora font-bold text-[var(--accent-secondary-dark)] tabular-nums">{losses}</div>
+                          <div className="text-xs font-semibold text-[var(--text-muted)]">Défaites</div>
+                        </div>
+                        <div className="rounded-input bg-[var(--bg-dim)] px-3 py-3">
+                          <div className="text-2xl font-sora font-bold text-[var(--text-main)] tabular-nums">{decided > 0 ? `${Math.round((wins / decided) * 100)} %` : '—'}</div>
+                          <div className="text-xs font-semibold text-[var(--text-muted)]">Réussite</div>
+                        </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${match.resultat === 'gagné' ? 'bg-[var(--accent-primary)] text-white' : match.resultat === 'perdu' ? 'bg-[var(--accent-secondary)] text-[var(--text-main)]' : 'bg-[var(--bg-dim)] text-[var(--text-main)]'}`}>
-                        {match.resultat || '—'}
-                      </span>
-                    </div>
-                  ))}
+                    )
+                  })()}
+                  <p className="text-xs text-[var(--text-muted)]">Touchez un match pour saisir ou consulter la fiche complète (statistiques, export PDF).</p>
+                  <div className="space-y-3">
+                    {matchHistory.map((item) => {
+                      const result = item.details ? computeMatchResult(item.details.sets, item.details.result_override) : null
+                      return (
+                        <button
+                          key={item.session.id}
+                          type="button"
+                          onClick={() => setMatchSession(item.session)}
+                          className="w-full text-left rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between hover:opacity-90 transition cursor-pointer"
+                        >
+                          <div>
+                            <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{item.session.date}</div>
+                            <div className="text-sm text-[var(--text-muted)]">Adversaire : {item.details?.adversaire || '—'}</div>
+                            <div className="text-sm text-[var(--text-muted)]">Score : {item.details ? formatScore(item.details.sets) : '—'}</div>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold self-start md:self-center ${
+                              result === 'victoire'
+                                ? 'bg-[var(--bg-green-muted)] text-[var(--accent-primary)]'
+                                : result === 'defaite'
+                                  ? 'bg-[var(--bg-clay-muted)] text-[var(--accent-secondary-dark)]'
+                                  : 'bg-[var(--bg-dim)] text-[var(--text-muted)]'
+                            }`}
+                          >
+                            {result ? MATCH_RESULT_LABELS[result] : 'Fiche à saisir'}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </Card>
@@ -1047,7 +1092,18 @@ export default function ParentDashboard() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              {detailSession.type === 'match' && (
+                <button
+                  onClick={() => {
+                    setMatchSession(detailSession)
+                    setDetailSession(null)
+                  }}
+                  className="px-5 py-3 rounded-input bg-[var(--accent-cta)] text-[var(--text-main)] font-semibold shadow hover:opacity-95 transition"
+                >
+                  Statistiques du match
+                </button>
+              )}
               <button
                 onClick={() => setDetailSession(null)}
                 className="px-5 py-3 rounded-input border border-[var(--border-strong)] text-[var(--text-muted)] hover:bg-[var(--bg-dim)] transition"
@@ -1057,6 +1113,16 @@ export default function ParentDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {matchSession && selectedPlayer && (
+        <MatchDetailsModal
+          sessionId={matchSession.id}
+          playerId={matchSession.player_id}
+          playerName={selectedPlayer.nom}
+          sessionDate={matchSession.date}
+          onClose={() => setMatchSession(null)}
+        />
       )}
     </div>
   )

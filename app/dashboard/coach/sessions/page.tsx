@@ -15,6 +15,7 @@ import { fetchAllPeriods, type PeriodRow } from '@/lib/periods'
 import { PeriodBands, getWeekBandSegments, bandRowCount, bandSpacerHeight } from '@/components/ui/PeriodBands'
 import { BackButton } from '@/components/ui/BackButton'
 import { SessionStatusBadge } from '@/components/ui/SessionStatusBadge'
+import { MatchDetailsModal } from '@/components/MatchDetailsModal'
 import { WeatherBadge } from '@/components/ui/WeatherBadge'
 import type { WeatherByDate } from '@/lib/weather'
 import { EFFECTIVE_STATUS_LABELS, getEffectiveStatus } from '@/lib/session-status'
@@ -197,6 +198,7 @@ export default function CoachSessionsPage() {
   const [success, setSuccess] = useState('')
   const [showFormModal, setShowFormModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [matchSession, setMatchSession] = useState<EnrichedSession | null>(null)
   const [newGoalName, setNewGoalName] = useState('')
   const [savingGoal, setSavingGoal] = useState(false)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
@@ -1113,6 +1115,17 @@ export default function CoachSessionsPage() {
               </div>
 
               <div className="flex items-center gap-3">
+                {selectedSession.type === 'match' && (
+                  <button
+                    onClick={() => {
+                      setShowDetailModal(false)
+                      setMatchSession(selectedSession)
+                    }}
+                    className="px-5 py-3 rounded-input border border-[var(--border-strong)] text-[var(--text-main)] font-semibold hover:bg-[var(--bg-dim)] transition"
+                  >
+                    Statistiques du match
+                  </button>
+                )}
                 <button
                   onClick={() => void openEditSessionForm(selectedSession)}
                   className="bg-[var(--accent-cta)] text-[var(--text-main)] font-semibold px-5 py-3 rounded-input shadow hover:opacity-95 transition"
@@ -1129,6 +1142,16 @@ export default function CoachSessionsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {matchSession && (
+        <MatchDetailsModal
+          sessionId={matchSession.id}
+          playerId={matchSession.player_id}
+          playerName={matchSession.playerName}
+          sessionDate={matchSession.date}
+          onClose={() => setMatchSession(null)}
+        />
       )}
     </div>
   )
