@@ -78,7 +78,7 @@ export function WeatherBadge({ weather, className = '' }: { weather?: DayWeather
   return (
     <span
       title={tooltip}
-      className={`inline-flex items-center gap-1 text-[var(--text-muted)]/80 ${className}`}
+      className={`inline-flex items-center gap-1 text-[var(--text-muted)]/80 shrink-0 ${className}`}
     >
       <WeatherIcon kind={weatherKind(weather.icon)} />
       {pop > 30 && (

@@ -10,6 +10,7 @@ import { BouncingBall } from '@/components/ui/BouncingBall'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { StarRating as RatingStars } from '@/components/ui/StarRating'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground'
@@ -574,7 +575,7 @@ export default function ParentDashboard() {
         <CourtLinesBackground />
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
-            <h1 className="text-3xl font-sora font-bold text-[var(--accent-primary)]">Espace parent</h1>
+            <h1 className="text-[28px] md:text-[32px] font-sora font-bold tracking-tight text-[var(--text-main)]">Espace parent</h1>
             <p className="text-[var(--text-muted)] mt-1">Bonjour {userName}</p>
           </div>
           <div className="flex items-center gap-4">
@@ -584,21 +585,20 @@ export default function ParentDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-6 py-6 space-y-5 relative z-10">
         {error && <div className="bg-[var(--bg-clay-muted)] border border-[var(--accent-secondary-dark)]/20 text-[var(--accent-secondary-dark)] px-4 py-3 rounded-lg">{error}</div>}
 
         <Card className="p-6 relative overflow-hidden">
           <TennisServiceSilhouette className="absolute right-0 top-1/2 -translate-y-1/2 w-64 h-64 hidden lg:block text-[var(--accent-secondary)] opacity-10 dark:opacity-[0.08]" />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
             <div>
-              <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Sélection du joueur</h2>
+              <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Sélection du joueur</h2>
               <p className="text-[var(--text-muted)] mt-1">Basculez entre vos enfants pour consulter leurs séances et progrès.</p>
             </div>
             {linkedPlayers.length > 0 ? (
               <Select
                 value={selectedPlayerId}
                 onChange={(e) => setSelectedPlayerId(e.target.value)}
-                className="px-4 py-2 rounded-lg focus:ring-2 focus:ring-[var(--accent-secondary)]"
               >
                 {linkedPlayers.map((player) => (
                   <option key={player.id} value={player.id}>
@@ -615,9 +615,9 @@ export default function ParentDashboard() {
         {selectedPlayer && (
           <>
             <Card className="p-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
                 <div>
-                  <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Calendrier des séances – {selectedPlayer.nom}</h2>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Calendrier des séances – {selectedPlayer.nom}</h2>
                   <p className="text-[var(--text-muted)] mt-1">
                     {viewMode === 'week'
                       ? 'Vue hebdomadaire simple avec les créneaux de votre enfant.'
@@ -625,23 +625,39 @@ export default function ParentDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <div className="inline-flex bg-[var(--bg-card)] rounded-input p-1 border border-[var(--border-subtle)]">
+                  <SegmentedControl
+                    options={[
+                      { value: 'week', label: 'Semaine' },
+                      { value: 'month', label: 'Mois' },
+                    ]}
+                    value={viewMode}
+                    onChange={(mode) => setViewMode(mode)}
+                  />
+                  <div className="inline-flex items-center rounded-full bg-[var(--bg-inset)] p-1">
                     <button
-                      onClick={() => setViewMode('week')}
-                      className={`px-4 py-2 rounded-md text-sm font-semibold transition ${viewMode === 'week' ? 'bg-[var(--accent-cta)] text-[var(--text-main)]' : 'text-[var(--text-main)] hover:bg-[var(--bg-dim)]'}`}
+                      type="button"
+                      onClick={() => setCurrentWeekStart(viewMode === 'week' ? addDays(currentWeekStart, -7) : addMonths(currentWeekStart, -1))}
+                      className="px-4 min-h-[36px] rounded-full text-sm font-medium text-[var(--text-main)] hover:bg-[var(--bg-neutral-muted)] active:scale-95 active:opacity-90 transition"
                     >
-                      Semaine
+                      ← Précédent
                     </button>
+                    <span className="w-px h-5 bg-[var(--border-subtle)]" aria-hidden />
                     <button
-                      onClick={() => setViewMode('month')}
-                      className={`px-4 py-2 rounded-md text-sm font-semibold transition ${viewMode === 'month' ? 'bg-[var(--accent-cta)] text-[var(--text-main)]' : 'text-[var(--text-main)] hover:bg-[var(--bg-dim)]'}`}
+                      type="button"
+                      onClick={() => setCurrentWeekStart(startOfWeek(new Date()))}
+                      className="px-4 min-h-[36px] rounded-full text-sm font-medium text-[var(--text-main)] hover:bg-[var(--bg-neutral-muted)] active:scale-95 active:opacity-90 transition"
                     >
-                      Mois
+                      Aujourd’hui
+                    </button>
+                    <span className="w-px h-5 bg-[var(--border-subtle)]" aria-hidden />
+                    <button
+                      type="button"
+                      onClick={() => setCurrentWeekStart(viewMode === 'week' ? addDays(currentWeekStart, 7) : addMonths(currentWeekStart, 1))}
+                      className="px-4 min-h-[36px] rounded-full text-sm font-medium text-[var(--text-main)] hover:bg-[var(--bg-neutral-muted)] active:scale-95 active:opacity-90 transition"
+                    >
+                      Suivant →
                     </button>
                   </div>
-                  <Button variant="secondary" onClick={() => setCurrentWeekStart(viewMode === 'week' ? addDays(currentWeekStart, -7) : addMonths(currentWeekStart, -1))}>← Précédent</Button>
-                  <Button variant="secondary" onClick={() => setCurrentWeekStart(startOfWeek(new Date()))}>Aujourd’hui</Button>
-                  <Button variant="secondary" onClick={() => setCurrentWeekStart(viewMode === 'week' ? addDays(currentWeekStart, 7) : addMonths(currentWeekStart, 1))}>Suivant →</Button>
                 </div>
               </div>
 
@@ -661,7 +677,7 @@ export default function ParentDashboard() {
                       const daySessions = sessionsByDate.get(dateKey) || []
                       const isToday = dateKey === formatDateKey(new Date())
                       return (
-                        <div key={dateKey} className={`rounded-xl border bg-[var(--bg-card)] p-3 min-h-[180px] ${isToday ? 'border-[var(--accent-secondary)] ring-1 ring-[var(--accent-secondary)]' : 'border-[var(--border-subtle)]'}`}>
+                        <div key={dateKey} className={`rounded-2xl bg-[var(--bg-card)] p-4 min-h-[180px] ${isToday ? 'ring-2 ring-[var(--accent-secondary)]' : ''}`}>
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
                             <WeatherBadge weather={weather[dateKey]} />
@@ -691,7 +707,7 @@ export default function ParentDashboard() {
                                   key={session.id}
                                   onClick={() => setDetailSession(session)}
                                   title="Voir les détails de la séance"
-                                  className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)] cursor-pointer hover:opacity-90 transition"
+                                  className="rounded-xl px-3 py-2.5 text-xs bg-[var(--bg-card-nested)] cursor-pointer hover:opacity-90 active:scale-[0.98] transition"
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <span className="font-semibold">{formatTime(session.heure_debut)} - {formatTime(session.heure_fin)}</span>
@@ -709,7 +725,7 @@ export default function ParentDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-card border border-[var(--border-subtle)] bg-[var(--bg-dim)] hidden md:block">
+                <div className="overflow-hidden rounded-2xl bg-[var(--bg-card)] hidden md:block">
                   <div className="grid grid-cols-7 bg-[var(--bg-card)] text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
                     {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
                       <div key={day} className="px-2 py-2 text-center border-r border-[var(--border-subtle)] last:border-r-0">
@@ -743,7 +759,7 @@ export default function ParentDashboard() {
                                     key={session.id}
                                     onClick={() => setDetailSession(session)}
                                     title="Voir les détails de la séance"
-                                    className="rounded px-1.5 py-1 text-[10px] font-medium border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-main)] truncate cursor-pointer hover:opacity-90 transition"
+                                    className="rounded-md px-1.5 py-1 text-[10px] font-medium bg-[var(--bg-card-nested)] text-[var(--text-main)] truncate cursor-pointer hover:opacity-90 active:scale-[0.98] transition"
                                   >
                                     {formatTime(session.heure_debut)} · {getSessionTypeLabel(session.type)}
                                   </div>
@@ -797,9 +813,9 @@ export default function ParentDashboard() {
             </Card>
 
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Historique des séances</h2>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Historique des séances</h2>
                   <p className="text-[var(--text-muted)] mt-1">Les séances les plus récentes en premier.</p>
                 </div>
               </div>
@@ -808,7 +824,7 @@ export default function ParentDashboard() {
               ) : (
                 <div className="space-y-4">
                   {(showFullHistory ? sessions : sessions.slice(0, 3)).map((session) => (
-                    <div key={session.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                    <div key={session.id} className="rounded-2xl bg-[var(--bg-card-nested)] p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                           <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{session.date} · {formatTime(session.heure_debut)} - {formatTime(session.heure_fin)}</div>
@@ -848,9 +864,9 @@ export default function ParentDashboard() {
             </Card>
 
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Historique des matchs</h2>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Historique des matchs</h2>
                   <p className="text-[var(--text-muted)] mt-1">Résultats des matchs joués par votre enfant.</p>
                 </div>
               </div>
@@ -868,7 +884,7 @@ export default function ParentDashboard() {
                     return (
                       <div className="grid grid-cols-3 gap-3 text-center">
                         <div className="rounded-input bg-[var(--bg-green-muted)] px-3 py-3">
-                          <div className="text-2xl font-sora font-bold text-[var(--accent-primary)] tabular-nums">{wins}</div>
+                          <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] tabular-nums">{wins}</div>
                           <div className="text-xs font-semibold text-[var(--text-muted)]">Victoires</div>
                         </div>
                         <div className="rounded-input bg-[var(--bg-clay-muted)] px-3 py-3">
@@ -891,7 +907,7 @@ export default function ParentDashboard() {
                           key={item.session.id}
                           type="button"
                           onClick={() => setMatchSession(item.session)}
-                          className="w-full text-left rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between hover:opacity-90 transition cursor-pointer"
+                          className="w-full text-left rounded-2xl bg-[var(--bg-card-nested)] p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between hover:opacity-90 transition cursor-pointer"
                         >
                           <div>
                             <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{item.session.date}</div>
@@ -918,9 +934,9 @@ export default function ParentDashboard() {
             </Card>
 
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Périodes en cours / à venir</h2>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Périodes en cours / à venir</h2>
                   <p className="text-[var(--text-muted)] mt-1">Préparation et compétition suivies pour ce joueur.</p>
                 </div>
               </div>
@@ -933,7 +949,7 @@ export default function ParentDashboard() {
                     const isActive = today >= period.date_debut && today <= period.date_fin
                     const isUpcoming = today < period.date_debut
                     return (
-                      <div key={period.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                      <div key={period.id} className="rounded-2xl bg-[var(--bg-card-nested)] p-4">
                         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                           <div>
                             <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{period.nom}</div>
@@ -956,14 +972,14 @@ export default function ParentDashboard() {
         )}
 
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Réclamations</h2>
+              <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Réclamations</h2>
               <p className="text-[var(--text-muted)] mt-1">Signalez un problème ou une remarque au coach.</p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 space-y-4">
+          <div className="rounded-2xl bg-[var(--bg-card-nested)] p-5 space-y-4">
             {reclamationError && <p className="text-sm text-[var(--accent-secondary-dark)]">{reclamationError}</p>}
             {reclamationSuccess && <p className="text-sm text-[var(--accent-primary)]">{reclamationSuccess}</p>}
             <div>
@@ -973,7 +989,7 @@ export default function ParentDashboard() {
                 value={reclamationSujet}
                 onChange={(e) => setReclamationSujet(e.target.value)}
                 maxLength={200}
-                className="w-full px-4 py-2 border border-[var(--border-strong)] rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 text-[var(--text-main)] bg-[var(--bg-card)]"
+                className="w-full px-4 py-2.5 bg-[var(--bg-inset)] border border-transparent rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-cta)]/25 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60"
                 placeholder="Ex : créneau de mercredi à décaler"
               />
             </div>
@@ -983,7 +999,7 @@ export default function ParentDashboard() {
                 value={reclamationMessage}
                 onChange={(e) => setReclamationMessage(e.target.value)}
                 maxLength={2000}
-                className="w-full px-4 py-3 border border-[var(--border-strong)] rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 text-[var(--text-main)] bg-[var(--bg-card)] min-h-[100px]"
+                className="w-full px-4 py-3 bg-[var(--bg-inset)] border border-transparent rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-cta)]/25 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 min-h-[100px]"
                 placeholder="Décrivez votre réclamation..."
               />
             </div>
@@ -993,10 +1009,10 @@ export default function ParentDashboard() {
                 <button
                   type="button"
                   onClick={() => setReclamationCoachIds(coaches.map((coach) => coach.id))}
-                  className={`px-4 py-2 rounded-input text-sm font-semibold transition border ${
+                  className={`px-4 py-2 min-h-[44px] rounded-full text-sm font-semibold transition active:scale-95 active:opacity-90 ${
                     reclamationCoachIds.length === coaches.length && coaches.length > 0
-                      ? 'bg-[var(--accent-cta)] text-white border-transparent'
-                      : 'bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-strong)] hover:bg-[var(--bg-dim)]'
+                      ? 'bg-[var(--accent-cta)] text-[var(--text-main)]'
+                      : 'bg-[var(--bg-inset)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
                   }`}
                 >
                   Tous les coachs
@@ -1012,10 +1028,10 @@ export default function ParentDashboard() {
                           selected ? current.filter((id) => id !== coach.id) : [...current, coach.id]
                         )
                       }
-                      className={`px-4 py-2 rounded-input text-sm font-semibold transition border ${
+                      className={`px-4 py-2 min-h-[44px] rounded-full text-sm font-semibold transition active:scale-95 active:opacity-90 ${
                         selected
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent'
-                          : 'bg-[var(--bg-card)] text-[var(--text-muted)] border-[var(--border-strong)] hover:bg-[var(--bg-dim)]'
+                          ? 'bg-[var(--accent-cta)] text-[var(--text-main)]'
+                          : 'bg-[var(--bg-inset)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
                       }`}
                     >
                       {coach.nom}
@@ -1041,7 +1057,7 @@ export default function ParentDashboard() {
           {reclamations.length > 0 && (
             <div className="space-y-3 mt-6">
               {reclamations.map((item) => (
-                <div key={item.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                <div key={item.id} className="rounded-2xl bg-[var(--bg-card-nested)] p-4">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div className="font-sora font-semibold text-[var(--text-main)]">{item.sujet}</div>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.statut === 'traitee' ? 'bg-[var(--bg-green-muted)] text-[var(--accent-primary)]' : item.statut === 'en_cours' ? 'bg-[var(--bg-yellow-muted)] text-[var(--text-main)]' : 'bg-[var(--bg-clay-muted)] text-[var(--accent-secondary-dark)]'}`}>
@@ -1066,14 +1082,14 @@ export default function ParentDashboard() {
 
         {selectedPlayer && (
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Notation hebdomadaire</h2>
+                <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Notation hebdomadaire</h2>
                 <p className="text-[var(--text-muted)] mt-1">Donnez votre appréciation pour la qualité globale de l’entraînement de cette semaine.</p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+            <div className="rounded-2xl bg-[var(--bg-card-nested)] p-5">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="font-sora font-semibold text-lg text-[var(--text-main)]"><span className="tabular-nums">Semaine du {formatDateKey(currentWeekStart)}</span></div>
@@ -1093,9 +1109,9 @@ export default function ParentDashboard() {
       {detailSession && (
         <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-0 md:p-4 overflow-y-auto">
           <div className="bg-[var(--bg-card)] text-[var(--text-main)] w-full max-w-2xl rounded-none md:rounded-card shadow-2xl p-5 md:p-8 my-0 md:my-6 min-h-full md:min-h-0 border border-[var(--border-strong)]">
-            <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <h3 className="text-2xl font-sora font-bold text-[var(--accent-primary)]">Détails de la séance</h3>
+                <h3 className="text-xl font-sora font-bold text-[var(--text-main)]">Détails de la séance</h3>
                 <p className="text-[var(--text-muted)] mt-1">{selectedPlayer?.nom}</p>
               </div>
               <button

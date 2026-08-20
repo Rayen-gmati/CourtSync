@@ -6,8 +6,8 @@ import {
 } from '@/lib/session-status'
 
 const STATUS_STYLES: Record<EffectiveStatus, string> = {
-  prevue: 'bg-[var(--border-subtle)] text-[var(--text-muted)]',
-  en_cours: 'bg-[var(--accent-ball)] text-[var(--accent-primary)]',
+  prevue: 'bg-[var(--bg-neutral-muted)] text-[var(--text-muted)]',
+  en_cours: 'bg-[var(--bg-yellow-muted)] text-[var(--accent-ball-dark)]',
   faite: 'bg-[var(--bg-green-muted)] text-[var(--accent-primary)]',
   annulee: 'bg-[var(--bg-clay-muted)] text-[var(--accent-secondary-dark)]',
 }

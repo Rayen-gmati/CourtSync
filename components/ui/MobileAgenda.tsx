@@ -74,7 +74,7 @@ export function MobileAgenda({
         const isToday = key === todayKey
 
         return (
-          <section key={key} className={`rounded-card border bg-[var(--bg-card)] p-4 ${isToday ? 'border-[var(--accent-secondary)] ring-1 ring-[var(--accent-secondary)]' : 'border-[var(--border-subtle)]'}`}>
+          <section key={key} className={`rounded-2xl bg-[var(--bg-card)] p-4 ${isToday ? 'ring-2 ring-[var(--accent-secondary)]' : ''}`}>
             <div className="flex items-center justify-between gap-3">
               <div className="text-base font-sora font-semibold text-[var(--text-main)] capitalize">
                 {day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -103,7 +103,7 @@ export function MobileAgenda({
                     key={session.id}
                     type="button"
                     onClick={() => onSessionClick?.(session.id)}
-                    className="w-full min-h-[44px] text-left rounded-input border border-[var(--border-subtle)] bg-[var(--bg-dim)] px-4 py-3 transition hover:opacity-90"
+                    className="w-full min-h-[44px] text-left rounded-xl bg-[var(--bg-card-nested)] px-4 py-3 transition hover:opacity-90 active:scale-[0.98]"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-[var(--text-main)] tabular-nums">

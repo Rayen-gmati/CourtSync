@@ -22,6 +22,9 @@
     --bg-green-muted: theme('colors.courtGreen / 10%');
     --bg-clay-muted: theme('colors.clay / 10%');
     --bg-yellow-muted: theme('colors.tennisYellow / 20%');
+    --bg-card-nested: theme('colors.chalkDim');
+    --bg-inset: theme('colors.ink / 6%');
+    --bg-neutral-muted: theme('colors.slate / 12%');
   }
 
   html[data-theme="dark"] {
@@ -43,6 +46,9 @@
     --bg-green-muted: theme('colors.rolandClay / 20%');
     --bg-clay-muted: theme('colors.rolandClay / 15%');
     --bg-yellow-muted: theme('colors.tennisYellow / 15%');
+    --bg-card-nested: #2c241e;
+    --bg-inset: #14100d;
+    --bg-neutral-muted: theme('colors.rolandSlate / 16%');
   }
 }
 

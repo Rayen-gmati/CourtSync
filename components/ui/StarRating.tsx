@@ -20,7 +20,7 @@ export function StarRating({
   const activeRating = interactive && hoverRating > 0 ? hoverRating : rating;
 
   return (
-    <div className={`flex gap-1 ${className}`}>
+    <div className={`flex gap-1.5 ${className}`}>
       {Array.from({ length: maxStars }).map((_, index) => {
         const starValue = index + 1;
         const isFilled = starValue <= activeRating;
@@ -33,12 +33,12 @@ export function StarRating({
             onClick={() => interactive && onChange?.(starValue)}
             onMouseEnter={() => interactive && setHoverRating(starValue)}
             onMouseLeave={() => interactive && setHoverRating(0)}
-            className={`transition-all duration-150 ${
-              interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'
+            className={`p-1 -m-1 transition-transform duration-150 ${
+              interactive ? 'cursor-pointer hover:scale-110 active:scale-90' : 'cursor-default'
             }`}
           >
             <svg
-              className={`w-5 h-5 ${isFilled ? 'text-[var(--accent-ball-dark)] fill-current' : 'text-[var(--text-muted)] opacity-30 fill-current'}`}
+              className={`w-7 h-7 transition-colors duration-150 ${isFilled ? 'text-[var(--accent-ball-dark)] fill-current' : 'text-[var(--text-muted)] opacity-40 fill-current'}`}
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >

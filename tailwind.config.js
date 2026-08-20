@@ -32,8 +32,8 @@ module.exports = {
         rolandSlate: '#9E8F85',
       },
       borderRadius: {
-        card: '14px',
-        input: '9px',
+        card: '18px',
+        input: '12px',
       },
       boxShadow: {
         card: '0 1px 3px rgba(27,38,32,0.08), 0 1px 2px rgba(27,38,32,0.06)',

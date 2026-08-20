@@ -13,12 +13,12 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = "inline-flex items-center justify-center px-4 py-2 min-h-[44px] text-sm font-medium transition-all duration-150 rounded-lg active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
+  const baseStyles = "inline-flex items-center justify-center px-4 py-2 min-h-[44px] text-sm font-medium transition-all duration-150 rounded-full active:scale-[0.97] active:opacity-90 disabled:opacity-50 disabled:pointer-events-none";
 
   const variants = {
     primary: "bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-hover)]",
     accent: "bg-[var(--accent-cta)] text-[var(--text-main)] hover:bg-[var(--accent-cta-hover)] font-semibold",
-    secondary: "bg-[var(--bg-card)] hover:bg-[var(--bg-dim)] text-[var(--text-main)] border border-[var(--border-strong)]",
+    secondary: "bg-[var(--bg-inset)] hover:bg-[var(--bg-neutral-muted)] text-[var(--text-main)] border border-transparent",
     ghost: "bg-transparent text-[var(--accent-primary)] hover:underline",
   };
 

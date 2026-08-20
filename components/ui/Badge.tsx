@@ -7,10 +7,10 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 export function Badge({ type = 'entrainement', className = '', children, ...props }: BadgeProps) {
   const styles = {
     entrainement: { bg: 'bg-[var(--bg-green-muted)]', text: 'text-[var(--accent-primary)]', dot: 'bg-[var(--accent-primary)]' },
-    echauffement: { bg: 'bg-[var(--bg-yellow-muted)]', text: 'text-[var(--text-main)]', dot: 'bg-[var(--accent-ball)]' },
+    echauffement: { bg: 'bg-[var(--bg-yellow-muted)]', text: 'text-[var(--accent-ball-dark)]', dot: 'bg-[var(--accent-ball)]' },
     match: { bg: 'bg-[var(--bg-clay-muted)]', text: 'text-[var(--accent-secondary-dark)]', dot: 'bg-[var(--accent-secondary)]' },
-    prevue: { bg: 'bg-[var(--border-subtle)]', text: 'text-[var(--text-muted)]', dot: 'bg-[var(--text-muted)]' },
-    faite: { bg: 'bg-[var(--bg-yellow-muted)]', text: 'text-[var(--text-main)]', dot: 'bg-[var(--accent-ball)]' },
+    prevue: { bg: 'bg-[var(--bg-neutral-muted)]', text: 'text-[var(--text-muted)]', dot: 'bg-[var(--text-muted)]' },
+    faite: { bg: 'bg-[var(--bg-yellow-muted)]', text: 'text-[var(--accent-ball-dark)]', dot: 'bg-[var(--accent-ball)]' },
     annulee: { bg: 'bg-[var(--bg-clay-muted)]', text: 'text-[var(--accent-secondary-dark)]', dot: 'bg-[var(--accent-secondary-dark)]' },
   };
 
