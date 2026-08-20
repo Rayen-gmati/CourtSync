@@ -4,6 +4,7 @@
 // sur petit écran. Conserve bandes de périodes (en chips), météo et statuts.
 
 import { SessionStatusBadge } from './SessionStatusBadge'
+import { formatTime } from '@/lib/format-time'
 import { WeatherBadge } from './WeatherBadge'
 import type { WeatherByDate } from '@/lib/weather'
 
@@ -106,7 +107,7 @@ export function MobileAgenda({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-[var(--text-main)] tabular-nums">
-                        {session.heure_debut} – {session.heure_fin}
+                        {formatTime(session.heure_debut)} – {formatTime(session.heure_fin)}
                       </span>
                       <SessionStatusBadge session={session} now={now} />
                     </div>

@@ -26,7 +26,7 @@ export function BackButton({ to, label = 'Retour', className = '' }: BackButtonP
       type="button"
       onClick={handleBack}
       aria-label={label}
-      className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-[var(--border-strong)] bg-transparent text-[var(--text-main)] transition-colors duration-150 hover:bg-[var(--bg-yellow-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 active:scale-[0.97] ${className}`}
+      className={`inline-flex items-center gap-2 px-3 py-2 min-h-[44px] text-sm font-medium rounded-lg border border-[var(--border-strong)] bg-transparent text-[var(--text-main)] transition-colors duration-150 hover:bg-[var(--bg-yellow-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-secondary)]/30 active:scale-[0.97] ${className}`}
     >
       <svg
         className="w-4 h-4"

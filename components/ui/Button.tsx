@@ -13,7 +13,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = "inline-flex items-center justify-center px-4 py-2 text-sm font-medium transition-all duration-150 rounded-lg active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
+  const baseStyles = "inline-flex items-center justify-center px-4 py-2 min-h-[44px] text-sm font-medium transition-all duration-150 rounded-lg active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
 
   const variants = {
     primary: "bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-hover)]",

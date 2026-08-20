@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { setRememberMe } from '@/lib/auth-storage'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -11,9 +12,28 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // Retour arrière après connexion : si une session valide existe déjà,
+  // /login ne doit jamais rester dans la pile — on replace immédiatement
+  // vers le bon tableau de bord (rôle lu dans le cookie UX user_role).
+  useEffect(() => {
+    let active = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active || !data.session) return
+      const role = document.cookie
+        .split('; ')
+        .find((c) => c.startsWith('user_role='))
+        ?.split('=')[1]
+      router.replace(role === 'parent' ? '/dashboard/parent' : '/dashboard/coach')
+    })
+    return () => {
+      active = false
+    }
+  }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,6 +41,10 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // Persistance longue (localStorage) ou limitée à l'onglet
+      // (sessionStorage) selon la case, AVANT d'établir la session.
+      setRememberMe(remember)
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -70,11 +94,12 @@ export default function LoginPage() {
 
       const { role } = await sessionResponse.json()
 
-      // Redirect based on role
+      // Redirect based on role — replace() pour que /login ne soit jamais
+      // empilé dans l'historique (le retour arrière ne reviendra pas ici).
       if (role === 'parent') {
-        router.push('/dashboard/parent')
+        router.replace('/dashboard/parent')
       } else {
-        router.push('/dashboard/coach')
+        router.replace('/dashboard/coach')
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred'
@@ -118,6 +143,16 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+
+            <label className="flex items-center gap-3 min-h-[44px] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="h-5 w-5 shrink-0 rounded border-[var(--border-strong)] bg-[var(--bg-card)] accent-[var(--accent-cta)]"
+              />
+              <span className="text-sm text-[var(--text-muted)]">Se souvenir de moi</span>
+            </label>
 
             <Button
               type="submit"

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { formatTime } from '@/lib/format-time'
 import { Badge } from '@/components/ui/Badge'
 import { BouncingBall } from '@/components/ui/BouncingBall'
 import { Button } from '@/components/ui/Button'
@@ -686,7 +687,7 @@ export default function ParentDashboard() {
                                   className="rounded-lg px-3 py-2 text-xs shadow-sm border border-[var(--border-subtle)] bg-[var(--bg-dim)] cursor-pointer hover:opacity-90 transition"
                                 >
                                   <div className="flex items-center justify-between gap-1">
-                                    <span className="font-semibold">{session.heure_debut} - {session.heure_fin}</span>
+                                    <span className="font-semibold">{formatTime(session.heure_debut)} - {formatTime(session.heure_fin)}</span>
                                     <SessionStatusBadge session={session} now={now} />
                                   </div>
                                   <div className="opacity-90 mt-1">{getSessionTypeLabel(session.type)}</div>
@@ -737,7 +738,7 @@ export default function ParentDashboard() {
                                     title="Voir les détails de la séance"
                                     className="rounded px-1.5 py-1 text-[10px] font-medium border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-main)] truncate cursor-pointer hover:opacity-90 transition"
                                   >
-                                    {session.heure_debut} · {getSessionTypeLabel(session.type)}
+                                    {formatTime(session.heure_debut)} · {getSessionTypeLabel(session.type)}
                                   </div>
                                 ))}
                                 {daySessions.length > 2 && (
@@ -803,7 +804,7 @@ export default function ParentDashboard() {
                     <div key={session.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                          <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{session.date} · {session.heure_debut} - {session.heure_fin}</div>
+                          <div className="font-sora font-semibold text-lg text-[var(--text-main)]">{session.date} · {formatTime(session.heure_debut)} - {formatTime(session.heure_fin)}</div>
                           <div className="text-sm text-[var(--text-muted)]">{getSessionTypeLabel(session.type)} · {session.localisation || 'Lieu à confirmer'}</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -1097,7 +1098,7 @@ export default function ParentDashboard() {
             <div className="space-y-4 text-sm text-[var(--text-main)]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Date :</strong> {detailSession.date}</div>
-                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Heure :</strong> {detailSession.heure_debut} - {detailSession.heure_fin}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Heure :</strong> {formatTime(detailSession.heure_debut)} - {formatTime(detailSession.heure_fin)}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Type :</strong> {getSessionTypeLabel(detailSession.type)}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Statut :</strong> {EFFECTIVE_STATUS_LABELS[getEffectiveStatus(detailSession, now)]}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Localisation :</strong> {detailSession.localisation || '—'}</div>

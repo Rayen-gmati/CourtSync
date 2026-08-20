@@ -32,7 +32,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
   return (
     <button
       onClick={toggleTheme}
-      className={`p-2 rounded-full transition-colors duration-200 hover:bg-[var(--bg-dim)] text-[var(--text-muted)] hover:text-[var(--text-main)] ${className}`}
+      className={`p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full transition-colors duration-200 hover:bg-[var(--bg-dim)] text-[var(--text-muted)] hover:text-[var(--text-main)] ${className}`}
       aria-label="Passer en mode sombre/clair"
       title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
     >

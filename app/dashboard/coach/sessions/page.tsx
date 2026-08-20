@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { formatTime } from '@/lib/format-time'
 import { Badge } from '@/components/ui/Badge'
 import { BouncingBall } from '@/components/ui/BouncingBall'
 import { Button } from '@/components/ui/Button'
@@ -394,8 +395,8 @@ export default function CoachSessionsPage() {
     setForm({
       playerId: session.player_id,
       date: session.date,
-      heureDebut: session.heure_debut,
-      heureFin: session.heure_fin,
+      heureDebut: formatTime(session.heure_debut),
+      heureFin: formatTime(session.heure_fin),
       localisation: session.localisation || '',
       type: session.type || 'entrainement',
       prix: session.prix !== null ? String(session.prix) : '',
@@ -692,7 +693,7 @@ export default function CoachSessionsPage() {
                         >
                           <div className="flex items-center justify-between gap-1">
                             <span className="font-semibold truncate">
-                              {session.heure_debut} - {session.heure_fin}
+                              {formatTime(session.heure_debut)} - {formatTime(session.heure_fin)}
                             </span>
                             <SessionStatusBadge session={session} now={now} />
                           </div>
@@ -764,7 +765,7 @@ export default function CoachSessionsPage() {
                     <div>
                       <p className="font-sora font-semibold text-lg text-[var(--text-main)]">{session.playerName}</p>
                       <p className="text-[var(--text-muted)] text-sm">
-                        {session.date} · {session.heure_debut} - {session.heure_fin} · {session.localisation || 'Localisation non renseignée'}
+                        {session.date} · {formatTime(session.heure_debut)} - {formatTime(session.heure_fin)} · {session.localisation || 'Localisation non renseignée'}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -1081,7 +1082,7 @@ export default function CoachSessionsPage() {
             <div className="space-y-4 text-sm text-[var(--text-main)]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Date:</strong> {selectedSession.date}</div>
-                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Heure:</strong> {selectedSession.heure_debut} - {selectedSession.heure_fin}</div>
+                <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Heure:</strong> {formatTime(selectedSession.heure_debut)} - {formatTime(selectedSession.heure_fin)}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4"><strong>Type:</strong> {selectedSession.type}</div>
                 <div className="rounded-input bg-[var(--bg-dim)] p-4">
                   <strong>Statut:</strong>{' '}
