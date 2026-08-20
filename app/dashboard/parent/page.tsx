@@ -167,6 +167,15 @@ export default function ParentDashboard() {
   useEffect(() => {
     setShowFullHistory(false)
   }, [selectedPlayerId])
+
+  // Mobile : au chargement, centre l'écran sur la carte du jour.
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 767px)').matches) return
+    const timer = window.setTimeout(() => {
+      document.getElementById('cal-today')?.scrollIntoView({ block: 'center' })
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [])
   const [matchHistory, setMatchHistory] = useState<MatchHistoryItem[]>([])
   const [matchSession, setMatchSession] = useState<SessionItem | null>(null)
   const [periods, setPeriods] = useState<PeriodItem[]>([])
@@ -677,9 +686,16 @@ export default function ParentDashboard() {
                       const daySessions = sessionsByDate.get(dateKey) || []
                       const isToday = dateKey === formatDateKey(new Date())
                       return (
-                        <div key={dateKey} className={`rounded-2xl bg-[var(--bg-card)] p-4 min-h-[180px] ${isToday ? 'ring-2 ring-[var(--accent-secondary)]' : ''}`}>
+                        <div key={dateKey} id={isToday ? 'cal-today' : undefined} className={`rounded-2xl p-4 min-h-[180px] ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}>
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
+                            <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-main)]">
+                              {formatDateLabel(day)}
+                              {isToday && (
+                                <span className="rounded-full bg-[var(--accent-cta)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-main)]">
+                                  Aujourd’hui
+                                </span>
+                              )}
+                            </span>
                             <WeatherBadge weather={weather[dateKey]} />
                           </div>
                           {/* Chips périodes visibles uniquement sur mobile (bandes masquées). */}
@@ -746,7 +762,7 @@ export default function ParentDashboard() {
                           const isCurrentMonth = day.getMonth() === currentWeekStart.getMonth()
                           const isToday = dateKey === formatDateKey(new Date())
                           return (
-                            <div key={dateKey} className={`min-h-24 p-2 ${isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)] opacity-60'} ${isToday ? 'ring-2 ring-[var(--accent-secondary)] ring-inset' : ''}`}>
+                            <div key={dateKey} className={`min-h-24 p-2 ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)] ring-inset' : isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)] opacity-60'}`}>
                               <div className="flex items-center justify-between mb-1">
                                 <span className={`text-sm font-semibold ${isCurrentMonth ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>
                                   {day.getDate()}

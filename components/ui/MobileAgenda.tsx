@@ -74,10 +74,15 @@ export function MobileAgenda({
         const isToday = key === todayKey
 
         return (
-          <section key={key} className={`rounded-2xl bg-[var(--bg-card)] p-4 ${isToday ? 'ring-2 ring-[var(--accent-secondary)]' : ''}`}>
+          <section key={key} id={isToday ? 'cal-today' : undefined} className={`rounded-2xl p-4 ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}>
             <div className="flex items-center justify-between gap-3">
-              <div className="text-base font-sora font-semibold text-[var(--text-main)] capitalize">
+              <div className="flex items-center gap-2 text-base font-sora font-semibold text-[var(--text-main)] capitalize">
                 {day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {isToday && (
+                  <span className="rounded-full bg-[var(--accent-cta)] px-2 py-0.5 text-[10px] font-semibold normal-case text-[var(--text-main)]">
+                    Aujourd’hui
+                  </span>
+                )}
               </div>
               <WeatherBadge weather={weather[key]} />
             </div>

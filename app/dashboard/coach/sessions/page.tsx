@@ -195,6 +195,15 @@ export default function CoachSessionsPage() {
   const [selectedPlayerFilter, setSelectedPlayerFilter] = useState('')
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
   const [referenceDate, setReferenceDate] = useState(new Date())
+
+  // Mobile : au chargement, centre l'écran sur la carte du jour.
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 767px)').matches) return
+    const timer = window.setTimeout(() => {
+      document.getElementById('cal-today')?.scrollIntoView({ block: 'center' })
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -669,7 +678,7 @@ export default function CoachSessionsPage() {
                           key={key}
                           onClick={() => openNewSessionForm(key)}
                           title={`Ajouter une séance le ${key}`}
-                          className={`min-h-40 p-2 cursor-pointer ${isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)]'} ${isToday ? 'ring-2 ring-[var(--accent-secondary)] ring-inset' : ''}`}
+                          className={`min-h-40 p-2 cursor-pointer ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)] ring-inset' : isCurrentMonth ? 'bg-transparent' : 'bg-[var(--bg-dim)]'}`}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className={`text-sm font-semibold ${isCurrentMonth ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)] opacity-40'}`}>
