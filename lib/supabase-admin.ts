@@ -9,5 +9,6 @@ export const supabaseAdmin = createLazySupabaseClient(
     key: process.env.SUPABASE_SERVICE_ROLE_KEY,
   }),
   'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env variables',
-  { auth: { autoRefreshToken: false, persistSession: false } }
+  { auth: { autoRefreshToken: false, persistSession: false } },
+  { url: 'NEXT_PUBLIC_SUPABASE_URL', key: 'SUPABASE_SERVICE_ROLE_KEY' }
 )
