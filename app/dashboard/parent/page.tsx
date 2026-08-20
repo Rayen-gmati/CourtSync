@@ -160,6 +160,12 @@ export default function ParentDashboard() {
   const [linkedPlayers, setLinkedPlayers] = useState<LinkedPlayer[]>([])
   const [selectedPlayerId, setSelectedPlayerId] = useState('')
   const [sessions, setSessions] = useState<SessionItem[]>([])
+  const [showFullHistory, setShowFullHistory] = useState(false)
+
+  // Nouveau joueur sélectionné : replie l'historique à 3 séances.
+  useEffect(() => {
+    setShowFullHistory(false)
+  }, [selectedPlayerId])
   const [matchHistory, setMatchHistory] = useState<MatchHistoryItem[]>([])
   const [matchSession, setMatchSession] = useState<SessionItem | null>(null)
   const [periods, setPeriods] = useState<PeriodItem[]>([])
@@ -653,8 +659,9 @@ export default function ParentDashboard() {
                     {weekDays.map((day) => {
                       const dateKey = formatDateKey(day)
                       const daySessions = sessionsByDate.get(dateKey) || []
+                      const isToday = dateKey === formatDateKey(new Date())
                       return (
-                        <div key={dateKey} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 min-h-[180px]">
+                        <div key={dateKey} className={`rounded-xl border bg-[var(--bg-card)] p-3 min-h-[180px] ${isToday ? 'border-[var(--accent-secondary)] ring-1 ring-[var(--accent-secondary)]' : 'border-[var(--border-subtle)]'}`}>
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-semibold text-[var(--text-main)]">{formatDateLabel(day)}</span>
                             <WeatherBadge weather={weather[dateKey]} />
@@ -800,7 +807,7 @@ export default function ParentDashboard() {
                 <EmptyState message="Aucune séance enregistrée pour ce joueur." />
               ) : (
                 <div className="space-y-4">
-                  {sessions.map((session) => (
+                  {(showFullHistory ? sessions : sessions.slice(0, 3)).map((session) => (
                     <div key={session.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -831,6 +838,11 @@ export default function ParentDashboard() {
                       )}
                     </div>
                   ))}
+                  {!showFullHistory && sessions.length > 3 && (
+                    <Button variant="secondary" className="w-full" onClick={() => setShowFullHistory(true)}>
+                      Afficher plus ({sessions.length - 3} séance{sessions.length - 3 > 1 ? 's' : ''} plus ancienne{sessions.length - 3 > 1 ? 's' : ''})
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>
@@ -917,7 +929,7 @@ export default function ParentDashboard() {
               ) : (
                 <div className="space-y-3">
                   {periods.map((period) => {
-                    const today = new Date().toISOString().slice(0, 10)
+                    const today = formatDateKey(new Date())
                     const isActive = today >= period.date_debut && today <= period.date_fin
                     const isUpcoming = today < period.date_debut
                     return (
