@@ -1,5 +1,6 @@
 // Export PDF one-page d'une fiche match (design system CourtSync : vert foncé + jaune citron).
-import { jsPDF } from 'jspdf'
+// jspdf est importé dynamiquement : la lib (~150 kB) n'est téléchargée
+// qu'au clic sur « Exporter », pas dans le bundle initial des dashboards.
 import {
   MatchDetailsRow,
   MATCH_RESULT_LABELS,
@@ -24,7 +25,8 @@ type ExportContext = {
   lastEditedName: string | null
 }
 
-export function exportMatchPdf({ row, playerName, sessionDate, lastEditedName }: ExportContext) {
+export async function exportMatchPdf({ row, playerName, sessionDate, lastEditedName }: ExportContext) {
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomBytes } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireCoachAdmin } from '@/lib/api-auth'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Generate a random temporary password
+// Génère un mot de passe temporaire avec un générateur cryptographiquement
+// sûr (256 % 64 = 0 : aucun biais de distribution sur le charset).
 function generateTempPassword(): string {
-  const length = 12
   const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+  const bytes = randomBytes(12)
   let password = ''
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length))
+  for (const byte of bytes) {
+    password += charset.charAt(byte % charset.length)
   }
   return password
 }

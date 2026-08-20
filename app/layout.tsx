@@ -4,6 +4,7 @@ import { TennisServiceSilhouette } from '@/components/ui/TennisServiceSilhouette
 import { CourtLinesBackground } from '@/components/ui/CourtLinesBackground';
 import { PwaRegistrar } from '@/components/PwaRegistrar';
 import { IosInstallBanner } from '@/components/IosInstallBanner';
+import { SessionCookieRefresher } from '@/components/SessionCookieRefresher';
 import type { Metadata, Viewport } from 'next';
 
 const sora = Sora({
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <IosInstallBanner />
         <PwaRegistrar />
+        <SessionCookieRefresher />
       </body>
     </html>
   )

@@ -231,9 +231,9 @@ export function MatchDetailsModal({ sessionId, playerId, playerName, sessionDate
     }
   }
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!row) return
-    exportMatchPdf({ row, playerName, sessionDate, lastEditedName })
+    await exportMatchPdf({ row, playerName, sessionDate, lastEditedName })
   }
 
   const inputClass =

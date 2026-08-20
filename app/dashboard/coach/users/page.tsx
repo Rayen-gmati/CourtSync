@@ -161,7 +161,7 @@ export default function CreateUserPage() {
               <p className="font-semibold mb-2">Compte créé avec succès !</p>
               <p className="text-sm mb-3">Email: <code className="bg-[var(--bg-card)] px-2 py-1 rounded text-[var(--text-main)]">{email}</code></p>
               <p className="text-sm">Mot de passe temporaire: <code className="bg-[var(--bg-card)] px-2 py-1 rounded font-mono text-xs text-[var(--text-main)]">{tempPassword}</code></p>
-              <p className="text-sm mt-3 text-[var(--accent-hover)]">Copiez ce mot de passe pour le transmettre à l'utilisateur.</p>
+              <p className="text-sm mt-3 text-[var(--accent-hover)]">Copiez ce mot de passe pour le transmettre à l’utilisateur.</p>
             </div>
           )}
 
