@@ -25,6 +25,18 @@ import { WeatherBadge } from '@/components/ui/WeatherBadge'
 import { PeriodBands, getWeekBandSegments, bandRowCount, bandSpacerHeight } from '@/components/ui/PeriodBands'
 import type { WeatherByDate } from '@/lib/weather'
 import { useNow } from '@/lib/use-now'
+import { TabBar, type TabBarItem } from '@/components/ui/TabBar'
+import { Activity, CalendarDays, History, Home, MessageSquare } from 'lucide-react'
+
+type TabId = 'home' | 'calendar' | 'history' | 'follow' | 'contact'
+
+const TABS = [
+  { id: 'home', label: 'Accueil', icon: Home },
+  { id: 'calendar', label: 'Calendrier', icon: CalendarDays },
+  { id: 'history', label: 'Historique', icon: History },
+  { id: 'follow', label: 'Suivi', icon: Activity },
+  { id: 'contact', label: 'Contact', icon: MessageSquare },
+] as const satisfies readonly TabBarItem[]
 
 type LinkedPlayer = {
   id: string
@@ -181,6 +193,21 @@ export default function ParentDashboard() {
   const [periods, setPeriods] = useState<PeriodItem[]>([])
   const [weather, setWeather] = useState<WeatherByDate>({})
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week')
+  const [tab, setTab] = useState<TabId>('home')
+  const [historyView, setHistoryView] = useState<'seances' | 'matchs'>('seances')
+
+  // Mobile : un seul onglet visible à la fois ; desktop : tout reste empilé.
+  const tabClass = (target: TabId) => `${tab === target ? 'block animate-fade-in' : 'hidden'} md:block`
+
+  const todayKey = formatDateKey(new Date())
+  const todaySessions = sessions.filter((session) => session.date === todayKey)
+  const nextSession = useMemo(() => {
+    return (
+      sessions
+        .filter((session) => session.date > todayKey)
+        .sort((a, b) => `${a.date} ${a.heure_debut}`.localeCompare(`${b.date} ${b.heure_debut}`))[0] ?? null
+    )
+  }, [sessions, todayKey])
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => startOfWeek(new Date()))
   const [weeklyRating, setWeeklyRating] = useState<RatingValue>({ id: null, rating: null })
   const [ratingSaving, setRatingSaving] = useState(false)
@@ -594,9 +621,10 @@ export default function ParentDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-6 space-y-5 relative z-10">
+      <main className="max-w-7xl mx-auto px-6 py-6 pb-28 md:pb-6 space-y-5 relative z-10">
         {error && <div className="bg-[var(--bg-clay-muted)] border border-[var(--accent-secondary-dark)]/20 text-[var(--accent-secondary-dark)] px-4 py-3 rounded-lg">{error}</div>}
 
+        <div className={tabClass('home')}>
         <Card className="p-6 relative overflow-hidden">
           <TennisServiceSilhouette className="absolute right-0 top-1/2 -translate-y-1/2 w-64 h-64 hidden lg:block text-[var(--accent-secondary)] opacity-10 dark:opacity-[0.08]" />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
@@ -622,7 +650,46 @@ export default function ParentDashboard() {
         </Card>
 
         {selectedPlayer && (
+          <Card className="p-5">
+            <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Aujourd’hui & à venir</h2>
+            <div className="mt-4 space-y-3">
+              {todaySessions.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">Aucune séance aujourd’hui.</p>
+              ) : (
+                todaySessions.map((session) => (
+                  <div key={session.id} className="rounded-xl bg-[var(--bg-card-nested)] px-4 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold tabular-nums text-[var(--text-main)]">
+                        {formatTime(session.heure_debut)} – {formatTime(session.heure_fin)}
+                      </span>
+                      <SessionStatusBadge session={session} now={now} />
+                    </div>
+                    <div className="mt-0.5 text-sm text-[var(--text-muted)]">
+                      {getSessionTypeLabel(session.type)} · {session.localisation || 'Lieu à confirmer'}
+                    </div>
+                  </div>
+                ))
+              )}
+              {nextSession && (
+                <div className="rounded-xl bg-[var(--bg-card-nested)] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Prochaine séance</div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--text-main)]">
+                    {new Date(`${nextSession.date}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {' · '}{formatTime(nextSession.heure_debut)}
+                  </div>
+                  <div className="mt-0.5 text-sm text-[var(--text-muted)]">
+                    {getSessionTypeLabel(nextSession.type)} · {nextSession.localisation || 'Lieu à confirmer'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+        </div>
+
+        {selectedPlayer && (
           <>
+          <div className={tabClass('calendar')}>
             <Card className="p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
                 <div>
@@ -827,7 +894,21 @@ export default function ParentDashboard() {
                 </div>
               )}
             </Card>
+          </div>
 
+          <div className={tabClass('history')}>
+            <div className="mb-4 md:hidden">
+              <SegmentedControl
+                options={[
+                  { value: 'seances', label: 'Séances' },
+                  { value: 'matchs', label: 'Matchs' },
+                ]}
+                value={historyView}
+                onChange={setHistoryView}
+                className="w-full"
+              />
+            </div>
+            <div className={`${historyView === 'seances' ? 'block' : 'hidden'} md:block`}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -878,7 +959,9 @@ export default function ParentDashboard() {
                 </div>
               )}
             </Card>
+            </div>
 
+            <div className={`${historyView === 'matchs' ? 'block' : 'hidden'} md:block`}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -948,7 +1031,10 @@ export default function ParentDashboard() {
                 </div>
               )}
             </Card>
+            </div>
+          </div>
 
+          <div className={tabClass('follow')}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -983,10 +1069,11 @@ export default function ParentDashboard() {
                 </div>
               )}
             </Card>
-
+          </div>
           </>
         )}
 
+        <div className={tabClass('contact')}>
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -1095,8 +1182,10 @@ export default function ParentDashboard() {
             </div>
           )}
         </Card>
+        </div>
 
         {selectedPlayer && (
+          <div className={tabClass('follow')}>
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -1119,8 +1208,11 @@ export default function ParentDashboard() {
               {ratingError && <p className="mt-4 text-sm text-[var(--accent-secondary-dark)]">{ratingError}</p>}
             </div>
           </Card>
+          </div>
         )}
       </main>
+
+      <TabBar tabs={TABS} active={tab} onChange={(id) => setTab(id as TabId)} />
 
       {detailSession && (
         <div className="fixed inset-0 z-50 bg-[var(--text-main)]/60 backdrop-blur-sm flex items-start md:items-center justify-center p-0 md:p-4 overflow-y-auto">
