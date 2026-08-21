@@ -606,10 +606,11 @@ export default function ParentDashboard() {
   }
 
   return (
-    <div className="min-h-screen animate-fade-in relative">
+    <div className="min-h-screen relative">
+      <div className="animate-fade-in">
       <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-main)]/95 relative z-10">
         <CourtLinesBackground />
-        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
             <h1 className="text-[28px] md:text-[32px] font-sora font-bold tracking-tight text-[var(--text-main)]">Espace parent</h1>
             <p className="text-[var(--text-muted)] mt-1">Bonjour {userName}</p>
@@ -621,11 +622,11 @@ export default function ParentDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-6 pb-28 md:pb-6 space-y-5 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 py-4 pb-28 space-y-4 md:px-6 md:py-6 md:pb-6 md:space-y-5 relative z-10">
         {error && <div className="bg-[var(--bg-clay-muted)] border border-[var(--accent-secondary-dark)]/20 text-[var(--accent-secondary-dark)] px-4 py-3 rounded-lg">{error}</div>}
 
         <div className={tabClass('home')}>
-        <Card className="p-6 relative overflow-hidden">
+        <Card className="p-4 md:p-6 relative overflow-hidden">
           <TennisServiceSilhouette className="absolute right-0 top-1/2 -translate-y-1/2 w-64 h-64 hidden lg:block text-[var(--accent-secondary)] opacity-10 dark:opacity-[0.08]" />
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between relative z-10">
             <div>
@@ -650,7 +651,7 @@ export default function ParentDashboard() {
         </Card>
 
         {selectedPlayer && (
-          <Card className="p-5">
+          <Card className="p-4 md:p-5">
             <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Aujourd’hui & à venir</h2>
             <div className="mt-4 space-y-3">
               {todaySessions.length === 0 ? (
@@ -690,7 +691,7 @@ export default function ParentDashboard() {
         {selectedPlayer && (
           <>
           <div className={tabClass('calendar')}>
-            <Card className="p-6">
+            <Card className="p-4 md:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
                 <div>
                   <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Calendrier des séances – {selectedPlayer.nom}</h2>
@@ -909,7 +910,7 @@ export default function ParentDashboard() {
               />
             </div>
             <div className={`${historyView === 'seances' ? 'block' : 'hidden'} md:block`}>
-            <Card className="p-6">
+            <Card className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Historique des séances</h2>
@@ -962,7 +963,7 @@ export default function ParentDashboard() {
             </div>
 
             <div className={`${historyView === 'matchs' ? 'block' : 'hidden'} md:block`}>
-            <Card className="p-6">
+            <Card className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Historique des matchs</h2>
@@ -1035,7 +1036,7 @@ export default function ParentDashboard() {
           </div>
 
           <div className={tabClass('follow')}>
-            <Card className="p-6">
+            <Card className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Périodes en cours / à venir</h2>
@@ -1074,7 +1075,7 @@ export default function ParentDashboard() {
         )}
 
         <div className={tabClass('contact')}>
-        <Card className="p-6">
+        <Card className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Réclamations</h2>
@@ -1092,7 +1093,7 @@ export default function ParentDashboard() {
                 value={reclamationSujet}
                 onChange={(e) => setReclamationSujet(e.target.value)}
                 maxLength={200}
-                className="w-full px-4 py-2.5 bg-[var(--bg-inset)] border border-transparent rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-cta)]/25 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60"
+                className="w-full px-4 py-2.5 min-h-[44px] text-base bg-[var(--bg-inset)] border border-transparent rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-cta)]/25 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60"
                 placeholder="Ex : créneau de mercredi à décaler"
               />
             </div>
@@ -1102,7 +1103,7 @@ export default function ParentDashboard() {
                 value={reclamationMessage}
                 onChange={(e) => setReclamationMessage(e.target.value)}
                 maxLength={2000}
-                className="w-full px-4 py-3 bg-[var(--bg-inset)] border border-transparent rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-cta)]/25 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 min-h-[100px]"
+                className="w-full px-4 py-3 text-base bg-[var(--bg-inset)] border border-transparent rounded-input focus:outline-none focus:ring-2 focus:ring-[var(--accent-cta)]/25 text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 min-h-[100px]"
                 placeholder="Décrivez votre réclamation..."
               />
             </div>
@@ -1186,7 +1187,7 @@ export default function ParentDashboard() {
 
         {selectedPlayer && (
           <div className={tabClass('follow')}>
-          <Card className="p-6">
+          <Card className="p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">Notation hebdomadaire</h2>
@@ -1211,6 +1212,7 @@ export default function ParentDashboard() {
           </div>
         )}
       </main>
+      </div>
 
       <TabBar tabs={TABS} active={tab} onChange={(id) => setTab(id as TabId)} />
 

@@ -24,7 +24,7 @@ export function TabBar({
   return (
     <nav
       aria-label="Navigation principale"
-      className="fixed inset-x-0 bottom-0 z-40 md:hidden border-t border-[var(--border-subtle)] bg-[var(--bg-main)]/80 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-40 md:hidden border-t border-[var(--border-subtle)] bg-[var(--bg-main)]/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
     >
       <div className="grid grid-flow-col auto-cols-fr">
         {tabs.map((tabItem) => {

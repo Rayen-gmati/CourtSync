@@ -68,7 +68,10 @@ module.exports = {
         },
         'fade-in': {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+          // Pas de `transform` à 100% : un transform résiduel ferait de
+          // l'élément animé le containing block des descendants `fixed`
+          // (tab bar, modales) et casserait leur positionnement viewport.
+          '100%': { opacity: '1' },
         },
         'spin-ring': {
           '0%': { transform: 'rotate(0deg)' },
