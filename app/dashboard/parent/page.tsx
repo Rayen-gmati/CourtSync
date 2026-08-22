@@ -748,7 +748,7 @@ export default function ParentDashboard() {
                     segments={weekBandSegments}
                     className="absolute inset-x-0 top-11 z-0 hidden md:grid grid-cols-7 gap-x-3"
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+                  <div className="hidden md:grid md:grid-cols-7 gap-3">
                     {weekDays.map((day) => {
                       const dateKey = formatDateKey(day)
                       const daySessions = sessionsByDate.get(dateKey) || []
@@ -804,6 +804,72 @@ export default function ParentDashboard() {
                             )}
                           </div>
                         </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Mobile : liste condensée façon agenda natif — un jour = une
+                      ligne fine (date + météo), créneaux denses en dessous.
+                      Hauteur dynamique : pas de min-h fixe les jours vides. */}
+                  <div className="space-y-1.5 md:hidden">
+                    {weekDays.map((day) => {
+                      const dateKey = formatDateKey(day)
+                      const daySessions = sessionsByDate.get(dateKey) || []
+                      const dayPeriods = periods.filter((p) => p.date_debut <= dateKey && p.date_fin >= dateKey)
+                      const isToday = dateKey === formatDateKey(new Date())
+                      return (
+                        <section
+                          key={dateKey}
+                          id={isToday ? 'cal-today' : undefined}
+                          className={`rounded-2xl px-4 py-2.5 ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}
+                        >
+                          <div className="flex items-center justify-between gap-2 min-h-[28px]">
+                            <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-main)] capitalize">
+                              {formatDateLabel(day)}
+                              {isToday && (
+                                <span className="rounded-full bg-[var(--accent-cta)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-main)]">
+                                  Aujourd’hui
+                                </span>
+                              )}
+                            </span>
+                            <WeatherBadge weather={weather[dateKey]} />
+                          </div>
+
+                          {dayPeriods.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {dayPeriods.map((p) => (
+                                <span key={p.id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold bg-[var(--bg-dim)] text-[var(--text-main)]">
+                                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color || 'var(--accent-secondary)' }} />
+                                  {p.nom}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {daySessions.length === 0 ? (
+                            <p className="mt-0.5 text-xs text-[var(--text-muted)]/70">Aucune séance</p>
+                          ) : (
+                            <div className="mt-1.5 space-y-1.5">
+                              {daySessions.map((session) => (
+                                <button
+                                  key={session.id}
+                                  type="button"
+                                  onClick={() => setDetailSession(session)}
+                                  className="w-full min-h-[44px] text-left rounded-xl bg-[var(--bg-card-nested)] px-3 py-2 transition hover:opacity-90 active:scale-[0.98]"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-semibold text-[var(--text-main)] tabular-nums">
+                                      {formatTime(session.heure_debut)} – {formatTime(session.heure_fin)}
+                                      <span className="ml-2 font-normal text-[var(--text-muted)]">{getSessionTypeLabel(session.type)}</span>
+                                    </span>
+                                    <SessionStatusBadge session={session} now={now} />
+                                  </div>
+                                  <div className="text-xs text-[var(--text-muted)]/80">{session.localisation || 'Lieu à confirmer'}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </section>
                       )
                     })}
                   </div>
