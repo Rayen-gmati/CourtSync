@@ -753,52 +753,39 @@ export default function ParentDashboard() {
                       const dateKey = formatDateKey(day)
                       const daySessions = sessionsByDate.get(dateKey) || []
                       const isToday = dateKey === formatDateKey(new Date())
+                      const hasContent = daySessions.length > 0
                       return (
-                        <div key={dateKey} id={isToday ? 'cal-today' : undefined} className={`rounded-2xl p-4 min-h-[180px] ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-main)]">
+                        <div key={dateKey} id={isToday ? 'cal-today' : undefined} className={`rounded-2xl px-3 py-3 ${hasContent ? '' : 'py-3'} ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="flex items-center gap-1 text-xs font-semibold text-[var(--text-main)]">
                               {formatDateLabel(day)}
                               {isToday && (
-                                <span className="rounded-full bg-[var(--accent-cta)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-main)]">
+                                <span className="rounded-full bg-[var(--accent-cta)] px-1.5 py-px text-[9px] font-semibold text-[var(--text-main)] leading-none">
                                   Aujourd’hui
                                 </span>
                               )}
                             </span>
                             <WeatherBadge weather={weather[dateKey]} />
                           </div>
-                          {/* Chips périodes visibles uniquement sur mobile (bandes masquées). */}
-                          {periods.some((p) => p.date_debut <= dateKey && p.date_fin >= dateKey) && (
-                            <div className="mb-2 flex flex-wrap gap-1.5 md:hidden">
-                              {periods
-                                .filter((p) => p.date_debut <= dateKey && p.date_fin >= dateKey)
-                                .map((p) => (
-                                  <span key={p.id} className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-[var(--bg-dim)] text-[var(--text-main)]">
-                                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color || 'var(--accent-secondary)' }} />
-                                    {p.nom}
-                                  </span>
-                                ))}
-                            </div>
-                          )}
                           <div
-                            className="space-y-2 period-band-spacer"
+                            className="space-y-1.5 period-band-spacer"
                             style={{ '--period-band-rows': weekBandRows } as CSSProperties}
                           >
                             {daySessions.length === 0 ? (
-                              <div className="text-xs text-[var(--text-muted)]/70">Aucune séance</div>
+                              <div className="text-[11px] text-[var(--text-muted)]/60">Aucune séance</div>
                             ) : (
                               daySessions.map((session) => (
                                 <div
                                   key={session.id}
                                   onClick={() => setDetailSession(session)}
                                   title="Voir les détails de la séance"
-                                  className="rounded-xl px-3 py-2.5 text-xs bg-[var(--bg-card-nested)] cursor-pointer hover:opacity-90 active:scale-[0.98] transition"
+                                  className="rounded-lg px-2 py-1.5 text-[11px] bg-[var(--bg-card-nested)] cursor-pointer hover:opacity-90 active:scale-[0.98] transition"
                                 >
                                   <div className="flex items-center justify-between gap-1">
-                                    <span className="font-semibold">{formatTime(session.heure_debut)} - {formatTime(session.heure_fin)}</span>
+                                    <span className="font-semibold tabular-nums">{formatTime(session.heure_debut)}–{formatTime(session.heure_fin)}</span>
                                     <SessionStatusBadge session={session} now={now} />
                                   </div>
-                                  <div className="opacity-90 mt-1">{getSessionTypeLabel(session.type)}</div>
-                                  <div className="opacity-80 mt-1">{session.localisation || 'Lieu à confirmer'}</div>
+                                  <div className="opacity-90 leading-tight mt-0.5">{getSessionTypeLabel(session.type)} · {session.localisation || 'Lieu à confirmer'}</div>
                                 </div>
                               ))
                             )}
@@ -808,26 +795,27 @@ export default function ParentDashboard() {
                     })}
                   </div>
 
-                  {/* Mobile : liste condensée façon agenda natif — un jour = une
-                      ligne fine (date + météo), créneaux denses en dessous.
-                      Hauteur dynamique : pas de min-h fixe les jours vides. */}
-                  <div className="space-y-1.5 md:hidden">
+                  {/* Mobile : liste ultra-compacte façon agenda natif iOS —
+                      un jour = une ligne fine, créneaux denses, hauteur
+                      dynamique sans min-h pour les jours vides. */}
+                  <div className="space-y-1 md:hidden">
                     {weekDays.map((day) => {
                       const dateKey = formatDateKey(day)
                       const daySessions = sessionsByDate.get(dateKey) || []
                       const dayPeriods = periods.filter((p) => p.date_debut <= dateKey && p.date_fin >= dateKey)
                       const isToday = dateKey === formatDateKey(new Date())
+                      const hasContent = daySessions.length > 0 || dayPeriods.length > 0
                       return (
                         <section
                           key={dateKey}
                           id={isToday ? 'cal-today' : undefined}
-                          className={`rounded-2xl px-4 py-2.5 ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}
+                          className={`rounded-xl px-3 ${hasContent ? 'py-1.5' : 'py-1'} ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}
                         >
-                          <div className="flex items-center justify-between gap-2 min-h-[28px]">
-                            <span className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-main)] capitalize">
+                          <div className="flex items-center justify-between gap-2 min-h-[20px]">
+                            <span className="flex items-center gap-1 text-xs font-semibold text-[var(--text-main)] capitalize leading-tight">
                               {formatDateLabel(day)}
                               {isToday && (
-                                <span className="rounded-full bg-[var(--accent-cta)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-main)]">
+                                <span className="rounded-full bg-[var(--accent-cta)] px-1.5 py-px text-[9px] font-semibold text-[var(--text-main)] leading-none shrink-0">
                                   Aujourd’hui
                                 </span>
                               )}
@@ -836,10 +824,10 @@ export default function ParentDashboard() {
                           </div>
 
                           {dayPeriods.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1.5">
+                            <div className="mt-0.5 flex flex-wrap gap-1">
                               {dayPeriods.map((p) => (
-                                <span key={p.id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold bg-[var(--bg-dim)] text-[var(--text-main)]">
-                                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color || 'var(--accent-secondary)' }} />
+                                <span key={p.id} className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[9px] font-semibold bg-[var(--bg-dim)] text-[var(--text-main)] leading-tight">
+                                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color || 'var(--accent-secondary)' }} />
                                   {p.nom}
                                 </span>
                               ))}
@@ -847,24 +835,24 @@ export default function ParentDashboard() {
                           )}
 
                           {daySessions.length === 0 ? (
-                            <p className="mt-0.5 text-xs text-[var(--text-muted)]/70">Aucune séance</p>
+                            !hasContent || <p className="mt-0.5 text-[10px] text-[var(--text-muted)]/60 leading-tight">Aucune séance</p>
                           ) : (
-                            <div className="mt-1.5 space-y-1.5">
+                            <div className="mt-1 space-y-1">
                               {daySessions.map((session) => (
                                 <button
                                   key={session.id}
                                   type="button"
                                   onClick={() => setDetailSession(session)}
-                                  className="w-full min-h-[44px] text-left rounded-xl bg-[var(--bg-card-nested)] px-3 py-2 transition hover:opacity-90 active:scale-[0.98]"
+                                  className="w-full text-left rounded-lg bg-[var(--bg-card-nested)] px-2 py-1 transition hover:opacity-90 active:scale-[0.98]"
                                 >
                                   <div className="flex items-center justify-between gap-2">
-                                    <span className="text-sm font-semibold text-[var(--text-main)] tabular-nums">
-                                      {formatTime(session.heure_debut)} – {formatTime(session.heure_fin)}
-                                      <span className="ml-2 font-normal text-[var(--text-muted)]">{getSessionTypeLabel(session.type)}</span>
+                                    <span className="text-[11px] font-semibold text-[var(--text-main)] tabular-nums shrink-0">
+                                      {formatTime(session.heure_debut)}–{formatTime(session.heure_fin)}
+                                      <span className="ml-1 font-normal text-[var(--text-muted)] text-[10px]">· {getSessionTypeLabel(session.type)}</span>
                                     </span>
                                     <SessionStatusBadge session={session} now={now} />
                                   </div>
-                                  <div className="text-xs text-[var(--text-muted)]/80">{session.localisation || 'Lieu à confirmer'}</div>
+                                  <div className="text-[10px] text-[var(--text-muted)]/80 leading-tight mt-0.5">{session.localisation || 'Lieu à confirmer'}</div>
                                 </button>
                               ))}
                             </div>

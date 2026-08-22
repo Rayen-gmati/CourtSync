@@ -62,24 +62,29 @@ export function MobileAgenda({
       })
 
   if (visibleDays.length === 0) {
-    return <p className="rounded-card border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 text-center text-sm text-[var(--text-muted)]">{emptyMessage}</p>
+    return <p className="rounded-card border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 text-center text-sm text-[var(--text-muted)]">{emptyMessage}</p>
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {visibleDays.map((day) => {
         const key = formatDateKey(day)
         const daySessions = sessionsFor(key)
         const dayPeriods = periodsFor(key)
         const isToday = key === todayKey
+        const hasContent = daySessions.length > 0 || dayPeriods.length > 0
 
         return (
-          <section key={key} id={isToday ? 'cal-today' : undefined} className={`rounded-2xl p-4 ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-base font-sora font-semibold text-[var(--text-main)] capitalize">
+          <section
+            key={key}
+            id={isToday ? 'cal-today' : undefined}
+            className={`rounded-xl px-3 ${hasContent ? 'py-2' : 'py-1.5'} ${isToday ? 'bg-[var(--bg-clay-muted)] ring-2 ring-[var(--accent-cta)]' : 'bg-[var(--bg-card)]'}`}
+          >
+            <div className="flex items-center justify-between gap-2 min-h-[22px]">
+              <div className="flex items-center gap-1.5 text-sm font-sora font-semibold text-[var(--text-main)] capitalize leading-tight">
                 {day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                 {isToday && (
-                  <span className="rounded-full bg-[var(--accent-cta)] px-2 py-0.5 text-[10px] font-semibold normal-case text-[var(--text-main)]">
+                  <span className="rounded-full bg-[var(--accent-cta)] px-1.5 py-px text-[9px] font-semibold normal-case text-[var(--text-main)] leading-none">
                     Aujourd’hui
                   </span>
                 )}
@@ -88,13 +93,13 @@ export function MobileAgenda({
             </div>
 
             {dayPeriods.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1 flex flex-wrap gap-1">
                 {dayPeriods.map((period) => (
                   <span
                     key={period.id}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-[var(--text-main)] bg-[var(--bg-dim)]"
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-px text-[10px] font-semibold text-[var(--text-main)] bg-[var(--bg-dim)] leading-tight"
                   >
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: period.color || 'var(--accent-secondary)' }} />
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: period.color || 'var(--accent-secondary)' }} />
                     {period.nom}
                   </span>
                 ))}
@@ -102,34 +107,36 @@ export function MobileAgenda({
             )}
 
             {daySessions.length > 0 ? (
-              <div className="mt-3 space-y-2">
+              <div className="mt-1.5 space-y-1">
                 {daySessions.map((session) => (
                   <button
                     key={session.id}
                     type="button"
                     onClick={() => onSessionClick?.(session.id)}
-                    className="w-full min-h-[44px] text-left rounded-xl bg-[var(--bg-card-nested)] px-4 py-3 transition hover:opacity-90 active:scale-[0.98]"
+                    className="w-full text-left rounded-lg bg-[var(--bg-card-nested)] px-2.5 py-1.5 transition hover:opacity-90 active:scale-[0.98]"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-[var(--text-main)] tabular-nums">
-                        {formatTime(session.heure_debut)} – {formatTime(session.heure_fin)}
+                      <span className="text-xs font-semibold text-[var(--text-main)] tabular-nums shrink-0">
+                        {formatTime(session.heure_debut)}–{formatTime(session.heure_fin)}
                       </span>
                       <SessionStatusBadge session={session} now={now} />
                     </div>
-                    <div className="mt-0.5 text-sm text-[var(--text-muted)]">{session.label}</div>
-                    {session.sublabel && <div className="text-xs text-[var(--text-muted)]/80">{session.sublabel}</div>}
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-tight">
+                      {session.label}
+                      {session.sublabel && <span className="ml-1 opacity-80">· {session.sublabel}</span>}
+                    </div>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="mt-2 text-sm text-[var(--text-muted)]">{emptyMessage}</p>
+              !onDayClick && <p className="mt-0.5 text-[11px] text-[var(--text-muted)]/70 leading-tight">{emptyMessage}</p>
             )}
 
             {onDayClick && (
               <button
                 type="button"
                 onClick={() => onDayClick(key)}
-                className="mt-3 w-full min-h-[44px] rounded-input border border-dashed border-[var(--border-strong)] text-sm font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-dim)] transition"
+                className="mt-1.5 w-full min-h-[32px] rounded-input border border-dashed border-[var(--border-strong)] text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--bg-dim)] transition"
               >
                 + Ajouter une séance
               </button>
